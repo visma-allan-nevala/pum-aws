@@ -23,8 +23,8 @@ Example:
 
 ```
 C:\Users\alexander.lystad\pum-aws>python pum-aws.py
-Username: adm\dev_aly
-Domain Password:
+Privileged user (e.g. adm\dev_aly): adm\dev_aly
+Domain password:
 Visma Google Auth 2FA Token: 444692
 
 Please choose the AWS account and role you would like to assume:
@@ -32,7 +32,7 @@ Please choose the AWS account and role you would like to assume:
 [ 1 ]:  arn:aws:iam::039882259752:role/ViewOnlyAccess
 [ 2 ]:  arn:aws:iam::585848786654:role/AdministratorAccess
 [ 3 ]:  arn:aws:iam::095344953043:role/PowerUserAccess
-Selection:  3
+Selection: 3
 
 ----------------------------------------------------------------
 Your AWS access key pair has been stored in the AWS configuration file C:\Users\alexander.lystad\.aws\credentials
