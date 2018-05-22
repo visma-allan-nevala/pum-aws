@@ -141,4 +141,3 @@ print 'Your AWS access key pair has been stored in the AWS configuration file {0
 print 'Note that it will expire at {0}'.format(token['Credentials']['Expiration'])
 print 'Usage example: aws --profile vadfs s3api list-buckets'
 print '----------------------------------------------------------------\n'
-#it expires in 1 hour atm??? could be extended
