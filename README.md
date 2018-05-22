@@ -1,5 +1,5 @@
 # Purpose
-The purpose of this script is to allow Visma employees to work with the [AWS CLI](https://aws.amazon.com/cli/) using federated users ([Privileged User Management](https://confluence.visma.com/display/VCDM/PUM+-+Privileged+User+Management)). Federated access - not IAM users - must be used for all personal access to AWS.
+The purpose of this script is to allow Visma employees to work with the [AWS CLI](https://aws.amazon.com/cli/) using federated access with privileged users ([Privileged User Management](https://confluence.visma.com/display/VCDM/PUM+-+Privileged+User+Management)). Federated access with privileged users - not AWS IAM users - must be used for all personal access to AWS.
 
 # How does it work?
 1) The script asks the user for privileged user credentials and a valid 2FA token (if you don't have a privileged user, request one in [MIM](https://mimportal.visma.com/identitymanagement/default.aspx))
