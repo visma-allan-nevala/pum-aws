@@ -19,7 +19,7 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 	<provide privileged user username, password and 2fa token>
 	aws --profile vadfs s3api list-buckets
 	
-Example:
+## Example
 
 ```
 C:\Users\alexander.lystad\pum-aws>python pum-aws.py
