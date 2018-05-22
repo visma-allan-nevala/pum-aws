@@ -11,9 +11,10 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 # Prerequisites
 * [Python 3](https://www.python.org/downloads/)
+* Install dependencies: `pip install -r requirements.txt`
 
 # Usage
-
+	
 	python pum-aws.py
 	<provide privileged user username, password and 2fa token>
 	aws --profile vadfs s3api list-buckets
