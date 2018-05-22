@@ -1,8 +1,16 @@
 # Purpose
-The purpose of this tool is to allow federated users (Privileged User Management) to work with the AWS CLI.
+The purpose of this tool is to allow federated users ([Privileged User Management](https://confluence.visma.com/display/VCDM/PUM+-+Privileged+User+Management)) to work with the [AWS CLI](https://aws.amazon.com/cli/).
+
+# How does it work?
+1) The script asks the user for privileged user credentials and a valid 2FA token (if you don't have a privileged user, request one in [MIM](https://mimportal.visma.com/identitymanagement/default.aspx))
+2) The credentials are submitted to Visma's AFDS identity provider ([federation.visma.com](https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx))
+3) If the authentication is successful, a signed SAML assertion will be returned, containing claims to certain AWS IAM roles for certain AWS accounts (this is based on security group memberships in Active Directory which can be managed in [MIM](https://mimportal.visma.com/identitymanagement/default.aspx))
+4) If the SAML assertion contains claims for more than one AWS IAM role, the user is prompted to choose one of them
+5) The SAML assertion is sent to AWS and verified by AWS (Visma's ADFS must be trusted in the AWS account you are trying to log into, this is usually done by VITC when they create the AWS account)
+6) If the SAML assertion is verified successfully, AWS returns temporary security credentials for the chosen role. These credentials can be used for running AWS CLI and are valid for 1 hour.
 
 # Prerequisites
-* Python 3
+* [Python 3](https://www.python.org/downloads/)
 
 # Usage
 
@@ -13,7 +21,7 @@ The purpose of this tool is to allow federated users (Privileged User Management
 Example:
 
 ```
-C:\Users\alexander.lystad\Downloads\aws-visma-federated-api-access>python pum-aws.py
+C:\Users\alexander.lystad\pum-aws>python pum-aws.py
 Username: adm\dev_aly
 Domain Password:
 Visma Google Auth 2FA Token: 444692
@@ -21,28 +29,9 @@ Visma Google Auth 2FA Token: 444692
 Please choose the AWS account and role you would like to assume:
 [ 0 ]:  arn:aws:iam::095344953043:role/RDSAlice
 [ 1 ]:  arn:aws:iam::039882259752:role/ViewOnlyAccess
-[ 2 ]:  arn:aws:iam::708152831771:role/ViewOnlyAccess
-[ 3 ]:  arn:aws:iam::383381053630:role/BillingInfo
-[ 4 ]:  arn:aws:iam::585848786654:role/AdministratorAccess
-[ 5 ]:  arn:aws:iam::095344953043:role/PowerUserAccess
-[ 6 ]:  arn:aws:iam::095344953043:role/AdministratorAccess
-[ 7 ]:  arn:aws:iam::252650166657:role/AdministratorAccess
-[ 8 ]:  arn:aws:iam::100074597024:role/ReadOnlyAccess
-[ 9 ]:  arn:aws:iam::039882259752:role/AdministratorAccess
-[ 10 ]:  arn:aws:iam::485937710382:role/AdministratorAccess
-[ 11 ]:  arn:aws:iam::312327183351:role/AdministratorAccess
-[ 12 ]:  arn:aws:iam::754435796660:role/AdministratorAccess
-[ 13 ]:  arn:aws:iam::901509397090:role/AdministratorAccess
-[ 14 ]:  arn:aws:iam::708152831771:role/AdministratorAccess
-[ 15 ]:  arn:aws:iam::221836728622:role/AdministratorAccess
-[ 16 ]:  arn:aws:iam::359902235356:role/AdministratorAccess
-[ 17 ]:  arn:aws:iam::926538462187:role/AdministratorAccess
-[ 18 ]:  arn:aws:iam::734735494626:role/AdministratorAccess
-[ 19 ]:  arn:aws:iam::833432581518:role/PowerUserAccess
-[ 20 ]:  arn:aws:iam::833432581518:role/AdministratorAccess
-[ 21 ]:  arn:aws:iam::229394205472:role/AdministratorAccess
-[ 22 ]:  arn:aws:iam::042467748676:role/AdministratorAccess
-Selection:  6
+[ 2 ]:  arn:aws:iam::585848786654:role/AdministratorAccess
+[ 3 ]:  arn:aws:iam::095344953043:role/PowerUserAccess
+Selection:  3
 
 ----------------------------------------------------------------
 Your AWS access key pair has been stored in the AWS configuration file C:\Users\alexander.lystad\.aws\credentials
@@ -51,7 +40,7 @@ Usage example: aws --profile vadfs s3api list-buckets
 ----------------------------------------------------------------
 
 
-C:\Users\alexander.lystad\Downloads\aws-visma-federated-api-access>aws --profile vadfs s3api list-buckets
+C:\Users\alexander.lystad\pum-aws>aws --profile vadfs s3api list-buckets
 {
     "Owner": {
         "DisplayName": "vlpaws+095344953043",
