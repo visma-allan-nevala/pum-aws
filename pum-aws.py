@@ -23,6 +23,7 @@ tokenDuration = 60*60
 credentials_path = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
 
 # Get the federated credentials from the user
+print("Warning: This script will overwrite your default AWS credentials stored at "+credentials_path+"\n")
 print("Privileged user (e.g. adm\dev_aly):", end=" ")
 username = input()
 password = getpass.getpass(prompt='Domain password: ')
@@ -126,11 +127,11 @@ token = client.assume_role_with_saml(RoleArn = role_arn, PrincipalArn = principa
 # Write the AWS STS token into the AWS credential file
 credentials_config = configparser.RawConfigParser()
 credentials_config.read(credentials_path)
-if not credentials_config.has_section('pum'):
-    credentials_config.add_section('pum')
-credentials_config.set('pum', 'aws_access_key_id', token['Credentials']['AccessKeyId'])
-credentials_config.set('pum', 'aws_secret_access_key', token['Credentials']['SecretAccessKey'])
-credentials_config.set('pum', 'aws_session_token', token['Credentials']['SessionToken'])
+if not credentials_config.has_section('default'):
+    credentials_config.add_section('default')
+credentials_config.set('default', 'aws_access_key_id', token['Credentials']['AccessKeyId'])
+credentials_config.set('default', 'aws_secret_access_key', token['Credentials']['SecretAccessKey'])
+credentials_config.set('default', 'aws_session_token', token['Credentials']['SessionToken'])
 os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
 with open(credentials_path, 'w') as configfile:
     credentials_config.write(configfile)
@@ -139,5 +140,5 @@ with open(credentials_path, 'w') as configfile:
 print('\n----------------------------------------------------------------')
 print('Your AWS access key pair has been stored in the AWS configuration file {0}'.format(credentials_path))
 print('Note that it will expire at {0}'.format(token['Credentials']['Expiration']))
-print('Usage example: aws --profile pum s3api list-buckets')
+print('Usage example: aws s3api list-buckets') #--profile default
 print('----------------------------------------------------------------\n')
