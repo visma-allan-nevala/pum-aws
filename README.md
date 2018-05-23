@@ -26,6 +26,8 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 ```
 C:\Users\alexander.lystad\pum-aws>python pum-aws.py
+Warning: This script will overwrite your default AWS credentials stored at C:\Users\alexander.lystad\.aws\credentials
+
 Privileged user (e.g. adm\dev_aly): adm\dev_aly
 Domain password:
 Visma Google Auth 2FA Token: 444692
@@ -40,11 +42,11 @@ Selection: 3
 ----------------------------------------------------------------
 Your AWS access key pair has been stored in the AWS configuration file C:\Users\alexander.lystad\.aws\credentials
 Note that it will expire at 2018-05-22 14:46:28+00:00
-Usage example: aws --profile vadfs s3api list-buckets
+Usage example: aws s3api list-buckets
 ----------------------------------------------------------------
 
 
-C:\Users\alexander.lystad\pum-aws>aws --profile vadfs s3api list-buckets
+C:\Users\alexander.lystad\pum-aws>aws s3api list-buckets
 {
     "Owner": {
         "DisplayName": "vlpaws+095344953043",
