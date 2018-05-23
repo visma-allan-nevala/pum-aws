@@ -17,10 +17,10 @@ from bs4 import BeautifulSoup
 # Variables
 profile_region = 'eu-west-1'
 profile_output = 'json'
-credentials_filename = '\.aws\credentials'
 sslverification = True
 idpentryurl = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
 tokenDuration = 60*60
+credentials_path = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
 
 # Get the federated credentials from the user
 print("Privileged user (e.g. adm\dev_aly):", end=" ")
@@ -124,15 +124,13 @@ client = boto3.client('sts')
 token = client.assume_role_with_saml(RoleArn = role_arn, PrincipalArn = principal_arn, SAMLAssertion = assertion, DurationSeconds = tokenDuration)
 
 # Write the AWS STS token into the AWS credential file
-home_path = os.path.expanduser("~")
-credentials_path = home_path + credentials_filename
 credentials_config = configparser.RawConfigParser()
 credentials_config.read(credentials_path)
-if not credentials_config.has_section('vadfs'):
-    credentials_config.add_section('vadfs')
-credentials_config.set('vadfs', 'aws_access_key_id', token['Credentials']['AccessKeyId'])
-credentials_config.set('vadfs', 'aws_secret_access_key', token['Credentials']['SecretAccessKey'])
-credentials_config.set('vadfs', 'aws_session_token', token['Credentials']['SessionToken'])
+if not credentials_config.has_section('pum'):
+    credentials_config.add_section('pum')
+credentials_config.set('pum', 'aws_access_key_id', token['Credentials']['AccessKeyId'])
+credentials_config.set('pum', 'aws_secret_access_key', token['Credentials']['SecretAccessKey'])
+credentials_config.set('pum', 'aws_session_token', token['Credentials']['SessionToken'])
 os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
 with open(credentials_path, 'w') as configfile:
     credentials_config.write(configfile)
@@ -141,5 +139,5 @@ with open(credentials_path, 'w') as configfile:
 print('\n----------------------------------------------------------------')
 print('Your AWS access key pair has been stored in the AWS configuration file {0}'.format(credentials_path))
 print('Note that it will expire at {0}'.format(token['Credentials']['Expiration']))
-print('Usage example: aws --profile vadfs s3api list-buckets')
+print('Usage example: aws --profile pum s3api list-buckets')
 print('----------------------------------------------------------------\n')
