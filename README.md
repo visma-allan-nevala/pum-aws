@@ -15,8 +15,11 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 # Usage
 	
+	git clone https://stash.visma.com/scm/vcm/pum-aws.git
+	cd pum-aws
+	
 	python pum-aws.py
-	<provide privileged user username, password and 2fa token>
+	<provide privileged user credentials and 2fa token>
 	aws --profile vadfs s3api list-buckets
 	
 ## Example
