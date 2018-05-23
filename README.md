@@ -11,16 +11,18 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 # Prerequisites
 * [Python 3](https://www.python.org/downloads/)
-* Install dependencies: `pip install -r requirements.txt`
+
+# Installation
+
+	git clone https://stash.visma.com/scm/vcm/pum-aws.git
+	cd pum-aws
+	pip install -r requirements.txt
 
 # Usage
 	
-	git clone https://stash.visma.com/scm/vcm/pum-aws.git
-	cd pum-aws
-	
 	python pum-aws.py
 	<provide privileged user credentials and 2fa token>
-	aws --profile vadfs s3api list-buckets
+	aws s3api list-buckets
 	
 ## Example
 
