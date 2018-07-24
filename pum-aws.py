@@ -21,6 +21,7 @@ sslverification = True
 idpentryurl = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
 tokenDuration = 60*60
 credentials_path = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
+config_path = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 # Get the federated credentials from the user
 print("Warning: This script will overwrite your default AWS credentials stored at "+credentials_path+"\n")
@@ -135,6 +136,18 @@ credentials_config.set('default', 'aws_session_token', token['Credentials']['Ses
 os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
 with open(credentials_path, 'w') as configfile:
     credentials_config.write(configfile)
+	
+# Write the AWS config file
+config_config = configparser.RawConfigParser()
+config_config.read(config_path)
+if not config_config.has_section('default'):
+    config_config.add_section('default')
+config_config.set('default', 'region', profile_region)
+config_config.set('default', 'output', profile_output)
+os.makedirs(os.path.dirname(config_path), exist_ok=True)
+with open(config_path, 'w') as configfile:
+    config_config.write(configfile)
+
 
 # Give the user some basic info as to what has just happened
 print('\n----------------------------------------------------------------')
