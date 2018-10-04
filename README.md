@@ -70,3 +70,26 @@ C:\Users\alexander.lystad\pum-aws>aws s3api list-buckets
     ]
 }
 ```
+
+## bash helper functions
+Here is a way to use AWS profiles with pum-aws.
+
+Define the following function, and as many aliases as you have accounts (in `.bashrc` for instance):
+
+```
+function pum_login() {
+        export AWS_PROFILE=$1
+        aws sts get-caller-identity 2>&1 > /dev/null
+        if [ "$?" != "0" ]
+        then
+                python3 ~/terraform-wrapper/pum-aws.py --profile $1 --account $2
+        fi    
+}
+
+alias acc='pum_login acc 012345678901'
+alias stag='pum_login stag 123456789012'
+alias prod='pum_login prod 234567890123'
+```
+
+Then you can switch the current environment by calling one of the alias. You will be asked
+to provide PUM credentials only if there is no token yet, or your previous token has expired.
