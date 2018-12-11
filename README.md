@@ -30,10 +30,14 @@ Simply append any arguments to the .bat or .sh invocation.
 Windows:
 ```
 pum-aws.bat --profile test --account 123123123
+<provide privileged user credentials and 2fa token>
+aws s3api list-buckets
 ```
 Linux or Macos:
 ```
 pum-aws.sh --profile test --account 123123123
+<provide privileged user credentials and 2fa token>
+aws s3api list-buckets
 ```
 
 # Usage (if not using Docker)
