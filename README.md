@@ -11,14 +11,32 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 # Prerequisites
 * [Python 3](https://www.python.org/downloads/)
+* or, [Docker](https://www.docker.com/products/docker-desktop)
 
-# Installation
+# Installation (if not using Docker)
 
 	git clone https://stash.visma.com/scm/vcm/pum-aws.git
 	cd pum-aws
 	pip install -r requirements.txt
 
-# Usage
+# Usage (Docker)
+If you are running (or have access to) a Docker host, you can build a Docker image to run pum-aws commands without the hassle to setup a Python development environment.
+
+Simply execute *pum-aws.bat* from Windows, or *pum-aws.sh* from Linux/Macos (after adding execute permission by running ```chmod +x pum-aws.sh``` in a terminal).
+
+## Passing arguments with Docker
+Simply append any arguments to the .bat or .sh invocation.
+
+Windows:
+```
+pum-aws.bat --profile test --account 123123123
+```
+Linux or Macos:
+```
+pum-aws.sh --profile test --account 123123123
+```
+
+# Usage (if not using Docker)
 	
 	python pum-aws.py
 	<provide privileged user credentials and 2fa token>
@@ -94,7 +112,3 @@ alias prod='pum_login prod 234567890123'
 Then you can switch the current environment by calling one of the alias. You will be asked
 to provide PUM credentials only if there is no token yet, or your previous token has expired.
 
-# Docker usage
-If you are running (or have access to) a Docker host, you can build a Docker image to run pum-aws commands without the hassle to setup a Python development environment.
-
-Simply execute *pum-aws.bat* from Windows, or pum-aws.sh from Linux/Macos (after adding execute permission by running ```chmod +x pum-aws.sh```) in a terminal.
