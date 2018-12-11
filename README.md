@@ -93,3 +93,8 @@ alias prod='pum_login prod 234567890123'
 
 Then you can switch the current environment by calling one of the alias. You will be asked
 to provide PUM credentials only if there is no token yet, or your previous token has expired.
+
+# Docker usage
+If you are running (or have access to) a Docker host, you can build a Docker image to run pum-aws commands without the hassle to setup a Python development environment.
+
+Simply execute *pum-aws.bat* from Windows, or pum-aws.sh from Linux/Macos (after adding execute permission by running ```chmod +x pum-aws.sh```) in a terminal.
