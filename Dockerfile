@@ -1,5 +1,5 @@
 FROM python
-COPY pum-aws.py requirements.txt /root/
+COPY pum_aws.py requirements.txt /root/
 WORKDIR /root
 RUN pip install -r requirements.txt
-ENTRYPOINT ["python","pum-aws.py"]
+ENTRYPOINT ["python","pum_aws.py"]
