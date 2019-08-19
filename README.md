@@ -42,14 +42,14 @@ aws s3api list-buckets
 
 # Usage (if not using Docker)
 	
-	python pum-aws.py
+	python pum_aws.py
 	<provide privileged user credentials and 2fa token>
 	aws s3api list-buckets
 	
 ## Example
 
 ```
-C:\Users\alexander.lystad\pum-aws>python pum-aws.py
+C:\Users\alexander.lystad\pum-aws>python pum_aws.py
 Warning: This script will overwrite your default AWS credentials stored at C:\Users\alexander.lystad\.aws\credentials
 
 Privileged user (e.g. adm\dev_aly): adm\dev_aly
@@ -104,7 +104,7 @@ function pum_login() {
         aws sts get-caller-identity 2>&1 > /dev/null
         if [ "$?" != "0" ]
         then
-                python3 ~/terraform-wrapper/pum-aws.py --profile $1 --account $2
+                python3 ~/terraform-wrapper/pum_aws.py --profile $1 --account $2
         fi    
 }
 
