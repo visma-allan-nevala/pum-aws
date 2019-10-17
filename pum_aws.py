@@ -34,12 +34,13 @@ def main():
     profile_output = 'json'
     sslverification = True
     idpentryurl = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
-    tokenDuration = 60*60
     credentials_path = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
     config_path = os.path.join(os.path.expanduser("~"), ".aws", "config")
     pumaws_configpath = os.path.join(os.path.expanduser("~"), ".pum-aws")
 
     parser = argparse.ArgumentParser(description="Get temporary AWS credentials using Visma federated access with privileged users.")
+    parser.add_argument("-d", "--duration", default="1", help="Token duration in hours")
+    parser.add_argument("--role", help="Role name")
     parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
     parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
     parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
@@ -53,6 +54,7 @@ def main():
     section=args.profile
     account=args.account
     profile_region = args.region
+    tokenDuration = int(args.duration) * 60 * 60
 
     # Read last used user name
     pumaws_config = configparser.RawConfigParser()
@@ -171,14 +173,30 @@ def main():
             awsroles.insert(index, newawsrole)
             awsroles.remove(awsrole)
 
-    ## Filter roles based on the specified account
+    unfilteredRoles = awsroles.copy()
+    unfilteredRoles.sort()
+
+    filterParts = []
+    # Filter roles based on the specified account
     if account is not None:
-        awsroles = list(filter(lambda x: account in x, awsroles))
+        awsroles = list(filter(lambda x: ":" + account + ":" in x, awsroles))
+        filterParts.append("account: '" + account + "'")
+
+    # Filter roles based on role name
+    if args.role is not None:
+        awsroles = list(filter(lambda x: ("role/" + args.role) in x, awsroles))
+        filterParts.append("role: '" + args.role + "'")
 
     # If user has more than one role, ask the user which one they want, otherwise just proceed
     awsroles.sort()
     print("")
-    if len(awsroles) > 1:
+    if len(awsroles) == 0:
+        print('No role found for ' + ", ".join(filterParts) + '. Available roles:')
+        for awsrole in unfilteredRoles:
+            print(awsrole.split(',')[0])
+        raise Exception('No role found for ' + ", ".join(filterParts))
+
+    elif len(awsroles) > 1:
         i = 0
         print("Please choose the AWS account and role you would like to assume:")
         for awsrole in awsroles:
