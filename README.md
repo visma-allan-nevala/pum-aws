@@ -15,7 +15,7 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 # Installation (if not using Docker)
 
-	git clone https://stash.visma.com/scm/vcm/pum-aws.git
+	git clone git@github.com:Visma-Tech-Cloud-and-VCDM/pum-aws.git
 	cd pum-aws
 	pip install -r requirements.txt
 
