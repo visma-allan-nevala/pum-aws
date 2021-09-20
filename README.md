@@ -116,3 +116,53 @@ alias prod='pum_login prod 234567890123'
 Then you can switch the current environment by calling one of the alias. You will be asked
 to provide PUM credentials only if there is no token yet, or your previous token has expired.
 
+## Account aliases
+You can have a more friendly input selection by asigning aliases to account ids, so you don't need to memorize or lookup the accounts.
+To do this add in ~/.pum-aws, under the default section:
+```
+use_account_aliases = true
+```
+and create a new section, with an alias that is meaningfull:
+```
+[account-mapping]
+485131857340 = Prod-VNIPBC-VCDM-515876
+568113664249 = Dev-ODG-VCDM-515876
+884586481601 = Prod-MASTE-VCDM-515877
+022196045097 = Prod-VNINT-VCDM-515400961
+223971263993 = Stage-VNINT-VCDM-515400961
+521814490268 = Dev-VNINT-VCDM-515400961
+137827478992 = Acc-VNINT-VCDM-515400961
+925832921208 = Prod-MDM-VCDM-515877
+263063436720 = Stage-MDM-VCDM-515877
+725240589737 = Test-MDM-VCDM-515877
+958866370104 = Prod-CIRS-VCDM-5158761
+815876392698 = Prod-VNIPP-VCDM-515876
+310452341139 = Stage-VNIPP-VCDM-515876
+425622453155 = Test-VNIPP-VCDM-515876
+```
+You will get this friendlier output:
+```
+Please choose the AWS account and role you would like to assume:
+[ 0 ]:  Prod-VNINT-VCDM-515400961 => AdministratorAccess
+[ 1 ]:  Prod-VNINT-VCDM-515400961 => BillingAccess
+[ 2 ]:  Prod-VNINT-VCDM-515400961 => SDTRO
+[ 3 ]:  Acc-VNINT-VCDM-515400961 => AdministratorAccess
+[ 4 ]:  Acc-VNINT-VCDM-515400961 => SDTRW
+[ 5 ]:  Stage-VNINT-VCDM-515400961 => AdministratorAccess
+[ 6 ]:  Stage-VNINT-VCDM-515400961 => SDTRO
+[ 7 ]:  Stage-MDM-VCDM-515877 => SDTRO
+[ 8 ]:  Stage-VNIPP-VCDM-515876 => AdministratorAccess
+[ 9 ]:  Test-VNIPP-VCDM-515876 => AdministratorAccess
+[ 10 ]:  Prod-VNIPBC-VCDM-515876 => AdministratorAccess
+[ 11 ]:  Dev-VNINT-VCDM-515400961 => AdministratorAccess
+[ 12 ]:  Dev-VNINT-VCDM-515400961 => SDTRW
+[ 13 ]:  Dev-ODG-VCDM-515876 => AdministratorAccess
+[ 14 ]:  Test-MDM-VCDM-515877 => SDTRW
+[ 15 ]:  Prod-VNIPP-VCDM-515876 => BillingAccess
+[ 16 ]:  Prod-MASTE-VCDM-515877 => BillingAccess
+[ 17 ]:  Prod-MDM-VCDM-515877 => BillingAccess
+[ 18 ]:  Prod-MDM-VCDM-515877 => ReadOnlyAccess
+[ 19 ]:  Prod-MDM-VCDM-515877 => SDTRO
+[ 20 ]:  Prod-CIRS-VCDM-5158761 => BillingAccess
+Selection: 
+```
