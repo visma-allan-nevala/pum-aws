@@ -42,8 +42,11 @@ def main():
     pumaws_config = configparser.RawConfigParser()
     pumaws_config.read(pumaws_configpath)
     lastuser = ""
+    use_aliases = "false"
     if pumaws_config.has_section("default"):
         lastuser = pumaws_config.get("default", "username")
+        if pumaws_config.has_option("default", "use_account_aliases"):
+           use_aliases = pumaws_config.get("default", "use_account_aliases")
 
     # Get the federated credentials from the user
     print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
@@ -139,12 +142,16 @@ def main():
         awsroles = list(filter(lambda x: account in x, awsroles))
 
     # If user has more than one role, ask the user which one they want, otherwise just proceed
+    awsroles.sort()
     print("")
     if len(awsroles) > 1:
         i = 0
         print("Please choose the AWS account and role you would like to assume:")
         for awsrole in awsroles:
-            print('[', i, ']: ', awsrole.split(',')[0])
+            if use_aliases == "true" and pumaws_config.has_option("account-mapping",awsrole.split(',')[0].split(':')[4]):
+               print('[', i, ']: ', pumaws_config.get("account-mapping",awsrole.split(',')[0].split(':')[4]) , "=>" ,awsrole.split(',')[0].split('/')[-1])
+            else:
+               print('[', i, ']: ', awsrole.split(',')[0])
             i += 1
         print ("Selection:", end=" ")
         selectedroleindex = input()
