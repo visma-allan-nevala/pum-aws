@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 
+import datetime
 import sys
 import boto3
 import requests
@@ -231,11 +232,15 @@ def main():
     with open(config_path, 'w') as configfile:
         config_config.write(configfile)
 
-
     # Give the user some basic info as to what has just happened
     print('\n----------------------------------------------------------------')
-    print('Your AWS access key pair has been stored in the AWS configuration file {0}'.format(credentials_path))
-    print('Note that it will expire at {0}'.format(token['Credentials']['Expiration']))
+    
+    if fetch_allprofiles == 1:
+        print('All your available AWS profiles has been stored in the AWS configuration file {0}'.format(credentials_path))
+    else:
+        print('Your AWS access key pair has been stored in the AWS configuration file {0}'.format(credentials_path))
+    
+    print('Note that it will expire in ' + str(datetime.timedelta(seconds=tokenDuration)) + ' hours')
     print('----------------------------------------------------------------\n')
 
     return username, token['Credentials']['AccessKeyId'], token['Credentials']['SecretAccessKey'], token['Credentials']['SessionToken']

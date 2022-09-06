@@ -46,7 +46,23 @@ aws s3api list-buckets
 	<provide privileged user credentials and 2fa token>
 	aws s3api list-buckets
 	
-## Example
+## Example 1
+
+```
+C:\Users\joni.nieminen\pum-aws> pum-aws.bat --region eu-central-1 --duration 3 --allprofiles 1
+
+Privileged user (e.g. adm\dev_aly) [ADM\dev_jnm]: ADM\dev_jnm
+Domain password: 
+Visma Google Auth 2FA Token: 014150
+
+
+----------------------------------------------------------------
+All your available AWS profiles has been stored in the AWS configuration file /root/.aws/credentials
+Note that it will expire in 3:00:00 hours
+----------------------------------------------------------------
+```
+	
+## Example 2
 
 ```
 C:\Users\alexander.lystad\pum-aws>python pum_aws.py
