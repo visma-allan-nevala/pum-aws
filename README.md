@@ -46,7 +46,22 @@ aws s3api list-buckets
 	<provide privileged user credentials and 2fa token>
 	aws s3api list-buckets
 	
-## Example
+## Example 1
+
+```
+jonin@mac pum-aws % sh pum-aws.sh --region eu-central-1 --duration 3 --allprofiles 1
+
+Privileged user (e.g. adm\dev_aly) [ADM\dev_jnm]: ADM\dev_jnm
+Domain password: 
+Visma Google Auth 2FA Token: 014150
+
+
+----------------------------------------------------------------
+Your AWS access key pair has been stored in the AWS configuration file /root/.aws/credentials
+string indices must be integers
+```
+	
+## Example 2
 
 ```
 C:\Users\alexander.lystad\pum-aws>python pum_aws.py
