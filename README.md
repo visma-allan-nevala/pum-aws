@@ -49,7 +49,7 @@ aws s3api list-buckets
 ## Example 1
 
 ```
-jonin@mac pum-aws % sh pum-aws.sh --region eu-central-1 --duration 3 --allprofiles 1
+C:\Users\joni.nieminen\pum-aws> pum-aws.bat --region eu-central-1 --duration 3 --allprofiles 1
 
 Privileged user (e.g. adm\dev_aly) [ADM\dev_jnm]: ADM\dev_jnm
 Domain password: 
