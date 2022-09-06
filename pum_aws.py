@@ -54,14 +54,14 @@ def main():
     parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
     parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
     parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
-    parser.add_argument("-m", "--multiple", help="Use multiple profiles", default="0")
+    parser.add_argument("-m", "--allprofiles", help="Fetch all profiles", default="0")
     parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default="1")
 
     args = parser.parse_args()
 
     section=args.profile
     account=args.account
-    use_multiple = int(args.multiple)
+    fetch_allprofiles = int(args.allprofiles)
 
     global tokenDuration
     tokenDuration = int(args.duration)*60*60
@@ -177,7 +177,7 @@ def main():
     awsroles.sort()
     print("")
     if len(awsroles) > 1:
-        if use_multiple == 0:
+        if fetch_allprofiles == 0:
             i = 0
             print("Please choose the AWS account and role you would like to assume:")
             for awsrole in awsroles:
@@ -211,7 +211,7 @@ def main():
     global client
     client = boto3.client('sts')
 
-    if use_multiple == 1:
+    if fetch_allprofiles == 1:
         for awsrole in awsroles:
             role_arn = awsrole.split(',')[0]
             principal_arn = awsrole.split(',')[1]
