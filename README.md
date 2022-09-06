@@ -57,8 +57,9 @@ Visma Google Auth 2FA Token: 014150
 
 
 ----------------------------------------------------------------
-Your AWS access key pair has been stored in the AWS configuration file /root/.aws/credentials
-string indices must be integers
+All your available AWS profiles has been stored in the AWS configuration file /root/.aws/credentials
+Note that it will expire in 3:00:00 hours
+----------------------------------------------------------------
 ```
 	
 ## Example 2
