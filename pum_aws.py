@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 
+import datetime
 import sys
 import boto3
 import requests
@@ -239,7 +240,7 @@ def main():
     else:
         print('Your AWS access key pair has been stored in the AWS configuration file {0}'.format(credentials_path))
     
-    print('Note that it will expire at {0}'.format(token['Credentials']['Expiration']))
+    print('Note that it will expire in ' + str(datetime.timedelta(seconds=tokenDuration)) + ' hours')
     print('----------------------------------------------------------------\n')
 
     return username, token['Credentials']['AccessKeyId'], token['Credentials']['SecretAccessKey'], token['Credentials']['SessionToken']
