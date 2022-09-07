@@ -55,7 +55,7 @@ def main():
     parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
     parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
     parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
-    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles", default="")
+    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default="")
     parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default="1")
 
     args = parser.parse_args()
