@@ -49,7 +49,7 @@ aws s3api list-buckets
 ## Example 1
 
 ```
-C:\Users\joni.nieminen\pum-aws> pum-aws.bat --region eu-central-1 --duration 3 --allprofiles 1
+C:\Users\joni.nieminen\pum-aws> pum-aws.bat --region eu-central-1 --duration 3 --profiles central,development
 
 Privileged user (e.g. adm\dev_aly) [ADM\dev_jnm]: ADM\dev_jnm
 Domain password: 
@@ -57,7 +57,7 @@ Visma Google Auth 2FA Token: 014150
 
 
 ----------------------------------------------------------------
-All your available AWS profiles has been stored in the AWS configuration file /root/.aws/credentials
+These valid AWS profiles (central,development) was fetched has been stored in the AWS configuration file /root/.aws/credentials
 Note that it will expire in 3:00:00 hours
 ----------------------------------------------------------------
 ```
