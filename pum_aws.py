@@ -55,14 +55,14 @@ def main():
     parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
     parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
     parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
-    parser.add_argument("-m", "--allprofiles", help="Fetch all profiles", default="0")
+    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default="")
     parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default="1")
 
     args = parser.parse_args()
 
     section=args.profile
     account=args.account
-    fetch_allprofiles = int(args.allprofiles)
+    fetch_profiles = args.profiles
 
     global tokenDuration
     tokenDuration = int(args.duration)*60*60
@@ -178,7 +178,7 @@ def main():
     awsroles.sort()
     print("")
     if len(awsroles) > 1:
-        if fetch_allprofiles == 0:
+        if len(fetch_profiles) == 0:
             i = 0
             print("Please choose the AWS account and role you would like to assume:")
             for awsrole in awsroles:
@@ -212,14 +212,20 @@ def main():
     global client
     client = boto3.client('sts')
 
-    if fetch_allprofiles == 1:
+    fetched_profiles = []
+
+    if len(fetch_profiles) > 0:
+        profiles = fetch_profiles.split(',')
         for awsrole in awsroles:
             role_arn = awsrole.split(',')[0]
             principal_arn = awsrole.split(',')[1]
             section = awsrole.split(':role/')[1]
             section = re.split('\W+', section)[0]
-            setProfile(section, role_arn, principal_arn)
-            setConfig(section, profile_region, profile_output)
+
+            if section in profiles:
+                fetched_profiles.append(section)
+                setProfile(section, role_arn, principal_arn)
+                setConfig(section, profile_region, profile_output)
     else:
         setProfile(section, role_arn, principal_arn)
         setConfig(section, profile_region, profile_output)
@@ -235,10 +241,10 @@ def main():
     # Give the user some basic info as to what has just happened
     print('\n----------------------------------------------------------------')
     
-    if fetch_allprofiles == 1:
-        print('All your available AWS profiles has been stored in the AWS configuration file {0}'.format(credentials_path))
+    if len(fetch_profiles) > 0:
+        print(f'These valid AWS profiles ({",".join(fetched_profiles)}) was fetched has been stored in the AWS configuration file {credentials_path}')
     else:
-        print('Your AWS access key pair has been stored in the AWS configuration file {0}'.format(credentials_path))
+        print(f'Your AWS access key pair has been stored in the AWS configuration file {credentials_path}')
     
     print('Note that it will expire in ' + str(datetime.timedelta(seconds=tokenDuration)) + ' hours')
     print('----------------------------------------------------------------\n')
