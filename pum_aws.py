@@ -12,8 +12,17 @@ import re
 import os
 import argparse
 from bs4 import BeautifulSoup
+from subprocess import check_output
+import json
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
+
+def haveOnePassword():
+    try:
+        check_output(["op"])
+        return True
+    except:
+        return False
 
 
 # noinspection PyPackageRequirements
@@ -48,17 +57,28 @@ def main():
         if pumaws_config.has_option("default", "use_account_aliases"):
            use_aliases = pumaws_config.get("default", "use_account_aliases")
 
-    # Get the federated credentials from the user
-    print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
-    if lastuser != "":
-        username = input("Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
+    if haveOnePassword():    
+        _signinToken = check_output(["op", "signin", "--account", "visma", "--raw"])
+        secret = json.loads(check_output(["op", "item", "get", "Federation ADM", "--format", "json", "--session", _signinToken.decode('utf-8')]))
+        for f in secret['fields']:
+            if f["id"] == "username":
+                username = f["value"]
+            if f["id"] == "password":
+                password = f["value"]
+            if f["type"] == "OTP":
+                otp = f["totp"]   
     else:
-        username = input("Privileged user (e.g. adm\dev_aly): ")
+        # Get the federated credentials from the user
+        print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
+        if lastuser != "":
+            username = input("Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
+        else:
+            username = input("Privileged user (e.g. adm\dev_aly): ")
 
-    if username == "":
-        username = lastuser
+        if username == "":
+            username = lastuser
 
-    password = getpass.getpass(prompt='Domain password: ')
+        password = getpass.getpass(prompt='Domain password: ')
 
     # Save last used user name
     if lastuser != username and username is not None and username != "":
@@ -92,7 +112,10 @@ def main():
     response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
     #Get the challenge token from the user to pass to LinOTP (challengeQuestionInput)
     print("Visma Google Auth 2FA Token:", end=" ")
-    token = input()
+    if haveOnePassword():
+        token = otp
+    else:
+        token = input()
     # Build nested data structure, parse the response and extract all the necessary values
     tokensoup = BeautifulSoup(response.text, 'html.parser') #.decode('utf8')
     payload = {}
