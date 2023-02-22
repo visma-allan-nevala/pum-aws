@@ -12,12 +12,12 @@ import re
 import os
 import argparse
 from bs4 import BeautifulSoup
-from subprocess import check_output
+from subprocess import check_output,CalledProcessError
 import json
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-def haveOnePassword():
+def haveOnePassword(item_name):
     try:
         check_output(["op"])
         return True
@@ -28,6 +28,9 @@ def haveOnePassword():
 # noinspection PyPackageRequirements
 def main():
     # Variables
+    username = None
+    password = None
+    otp = None
     profile_output = 'json'
     sslverification = True
     idpentryurl = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
@@ -40,6 +43,10 @@ def main():
     parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
     parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
     parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
+    default_op_account = os.environ.get('PUM_OP_ACCOUNT', "visma")
+    parser.add_argument("--op-account", help="Name of the 1Password account (default: '" + default_op_account + "')", default=default_op_account, dest="op_account")
+    default_op_item_name = os.environ.get('PUM_OP_ITEM_NAME', "Federation ADM")
+    parser.add_argument("--op-item", help="Name of the 1Password item (default: '" + default_op_item_name + "')", default=default_op_item_name, dest="op_item")
 
     args = parser.parse_args()
 
@@ -57,19 +64,23 @@ def main():
         if pumaws_config.has_option("default", "use_account_aliases"):
            use_aliases = pumaws_config.get("default", "use_account_aliases")
 
-    if haveOnePassword():    
-        _signinToken = check_output(["op", "signin", "--account", "visma", "--raw"])
-        secret = json.loads(check_output(["op", "item", "get", "Federation ADM", "--format", "json", "--session", _signinToken.decode('utf-8')]))
-        for f in secret['fields']:
-            if f["id"] == "username":
-                username = f["value"]
-            if f["id"] == "password":
-                password = f["value"]
-            if f["type"] == "OTP":
-                otp = f["totp"]   
-    else:
+    print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
+
+    if haveOnePassword(args.op_item):
+        try:
+            _signinToken = check_output(["op", "signin", "--account", args.op_account, "--raw"])
+            secret = json.loads(check_output(["op", "item", "get", args.op_item, "--format", "json", "--session", _signinToken.decode('utf-8')]))
+            for f in secret['fields']:
+                if f["id"] == "username":
+                    username = f["value"]
+                if f["id"] == "password":
+                    password = f["value"]
+                if f["type"] == "OTP":
+                    otp = f["totp"]
+        except CalledProcessError:
+            print("Could not login with 1Password")
+    if username is None or password is None:
         # Get the federated credentials from the user
-        print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
         if lastuser != "":
             username = input("Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
         else:
@@ -111,10 +122,10 @@ def main():
     # 2nd HTTP request: POST the username and password
     response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
     #Get the challenge token from the user to pass to LinOTP (challengeQuestionInput)
-    print("Visma Google Auth 2FA Token:", end=" ")
-    if haveOnePassword():
+    if otp is not None:
         token = otp
     else:
+        print("Visma Google Auth 2FA Token:", end=" ")
         token = input()
     # Build nested data structure, parse the response and extract all the necessary values
     tokensoup = BeautifulSoup(response.text, 'html.parser') #.decode('utf8')
