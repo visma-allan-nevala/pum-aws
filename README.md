@@ -45,7 +45,18 @@ aws s3api list-buckets
 	python pum_aws.py
 	<provide privileged user credentials and 2fa token>
 	aws s3api list-buckets
-	
+
+## 1Password integration
+Install 1Password CLI: https://developer.1password.com/docs/cli/get-started
+
+The CLI will be detected automatically. pum_aws expects an account named "visma" and an item named "Federation ADM".
+
+To override the default names:
+* account: use environment variable `PUM_OP_ACCOUNT` or parameter `--op-account`
+* item: use environment variable `PUM_OP_ITEM_NAME` or parameter `--op-item`
+
+OTP is also supported, the attribute must be named `otp` in 1Password.
+
 ## Example
 
 ```
