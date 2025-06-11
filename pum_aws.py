@@ -2,7 +2,6 @@
 #
 
 import datetime
-import sys
 import boto3
 import requests
 import getpass
@@ -17,17 +16,17 @@ from bs4 import BeautifulSoup
 #logging.basicConfig(level=logging.DEBUG)
 
 def setProfile(section, role_arn, principal_arn):
+    token = client.assume_role_with_saml(RoleArn = role_arn, PrincipalArn = principal_arn, SAMLAssertion = assertion, DurationSeconds = tokenDuration)
     try:
-        token = client.assume_role_with_saml(RoleArn = role_arn, PrincipalArn = principal_arn, SAMLAssertion = assertion, DurationSeconds = tokenDuration)
-    
         if not credentials_config.has_section(section):
             credentials_config.add_section(section)
         credentials_config.set(section, 'aws_access_key_id', token['Credentials']['AccessKeyId'])
         credentials_config.set(section, 'aws_secret_access_key', token['Credentials']['SecretAccessKey'])
         credentials_config.set(section, 'aws_session_token', token['Credentials']['SessionToken'])
         credentials_config.set(section, 'region', profile_region)
-    except:
-        print("Access denied to " + section)
+        return token
+    except:  # noqa: E722
+        print(f"Access denied to {section}")
 
 def setConfig(section, region, output):
     # Write the AWS config file
@@ -43,6 +42,13 @@ def setConfig(section, region, output):
 
 # noinspection PyPackageRequirements
 def main():
+    try:
+        implementation()
+    except KeyboardInterrupt:
+        print("\n\nExiting...")
+        exit(0)
+
+def implementation():    
     # Variables
     profile_output = 'json'
     sslverification = True
@@ -57,6 +63,7 @@ def main():
     parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
     parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default="")
     parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default="1")
+    parser.add_argument("-R", "--retry", help="Retry on failed login (default: False)", default=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -69,7 +76,7 @@ def main():
 
     global profile_region
     profile_region = args.region
-
+        
     # Read last used user name
     pumaws_config = configparser.RawConfigParser()
     pumaws_config.read(pumaws_configpath)
@@ -78,82 +85,91 @@ def main():
     if pumaws_config.has_section("default"):
         lastuser = pumaws_config.get("default", "username")
         if pumaws_config.has_option("default", "use_account_aliases"):
-           use_aliases = pumaws_config.get("default", "use_account_aliases")
+            use_aliases = pumaws_config.get("default", "use_account_aliases")
 
     # Get the federated credentials from the user
     print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
-    if lastuser != "":
-        username = input("Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
-    else:
-        username = input("Privileged user (e.g. adm\dev_aly): ")
 
-    if username == "":
-        username = lastuser
-
-    password = getpass.getpass(prompt='Domain password: ')
-
-    # Save last used user name
-    if lastuser != username and username is not None and username != "":
-        if not pumaws_config.has_section("default"):
-            pumaws_config.add_section("default")
-        pumaws_config.set("default", 'username', username)
-        with open(pumaws_configpath, 'w') as configfile:
-            pumaws_config.write(configfile)
-
-    # 1st HTTP request: GET the login form
-    session = requests.Session()
-    # Parse the response and extract all the necessary values
-    formresponse = session.get(idpentryurl, verify=sslverification, allow_redirects=True)
-    idpauthformsubmiturl = formresponse.url
-    formsoup = BeautifulSoup(formresponse.text, 'html.parser') #.decode('utf8')
-    payload = {}
-    for inputtag in formsoup.find_all(re.compile('(INPUT|input)')):
-        name = inputtag.get('name', '')
-        value = inputtag.get('value', '')
-        if "username" in name.lower():
-            payload[name] = username
-        elif "authmethod" in name.lower():
-            payload[name] = "FormsAuthentication"
-        elif "password" in name.lower():
-            payload[name] = password
+    loginSuccessful = None
+    while loginSuccessful is None or (args.retry and loginSuccessful is False):
+        if lastuser != "":
+            username = input("Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
         else:
-            #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-            payload[name] = value
+            username = input("Privileged user (e.g. adm\dev_aly): ")
 
-    # 2nd HTTP request: POST the username and password
-    response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
-    #Get the challenge token from the user to pass to LinOTP (challengeQuestionInput)
-    print("Visma Google Auth 2FA Token:", end=" ")
-    token = input()
-    # Build nested data structure, parse the response and extract all the necessary values
-    tokensoup = BeautifulSoup(response.text, 'html.parser') #.decode('utf8')
-    payload = {}
-    for inputtag in tokensoup.find_all(re.compile('(INPUT|input)')):
-        name = inputtag.get('name','')
-        value = inputtag.get('value','')
-        if "challenge" in name.lower():
-            payload[name] = token
-        elif "authmethod" in name.lower():
-            payload[name] = "VismaMFAAdapter"
+        if username == "":
+            username = lastuser
+
+        password = getpass.getpass(prompt='Domain password: ')
+
+        # Save last used user name
+        if lastuser != username and username is not None and username != "":
+            if not pumaws_config.has_section("default"):
+                pumaws_config.add_section("default")
+            pumaws_config.set("default", 'username', username)
+            with open(pumaws_configpath, 'w') as configfile:
+                pumaws_config.write(configfile)
+
+        # 1st HTTP request: GET the login form
+        session = requests.Session()
+        # Parse the response and extract all the necessary values
+        formresponse = session.get(idpentryurl, verify=sslverification, allow_redirects=True)
+        idpauthformsubmiturl = formresponse.url
+        formsoup = BeautifulSoup(formresponse.text, 'html.parser') #.decode('utf8')
+        payload = {}
+        for inputtag in formsoup.find_all(re.compile('(INPUT|input)')):
+            name = inputtag.get('name', '')
+            value = inputtag.get('value', '')
+            if "username" in name.lower():
+                payload[name] = username
+            elif "authmethod" in name.lower():
+                payload[name] = "FormsAuthentication"
+            elif "password" in name.lower():
+                payload[name] = password
+            else:
+                #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+                payload[name] = value
+
+        # 2nd HTTP request: POST the username and password
+        response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
+
+        #Get the challenge token from the user to pass to LinOTP (challengeQuestionInput)
+        
+        print("Visma Google Auth 2FA Token:", end=" ")
+        token = input()
+        # Build nested data structure, parse the response and extract all the necessary values
+        tokensoup = BeautifulSoup(response.text, 'html.parser') #.decode('utf8')
+        payload = {}
+        for inputtag in tokensoup.find_all(re.compile('(INPUT|input)')):
+            name = inputtag.get('name','')
+            value = inputtag.get('value','')
+            if "challenge" in name.lower():
+                payload[name] = token
+            elif "authmethod" in name.lower():
+                payload[name] = "VismaMFAAdapter"
+            else:
+                #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+                payload[name] = value
+
+        # 3rd HTTP request: POST the 2FA token
+        tokenresponse = session.post(response.url, data=payload, verify=sslverification, allow_redirects=True)
+
+        # Extract the SAML assertion and pass it to the AWS STS service
+        # Decode the response and extract the SAML assertion
+        soup = BeautifulSoup(tokenresponse.text, 'html.parser') #.decode('utf8')
+        global assertion
+        assertion = ''
+        # Look for the SAMLResponse attribute of the input tag (determined by analyzing the debug print lines above)
+        for inputtag in soup.find_all('input'):
+            if(inputtag.get('name') == 'SAMLResponse'):
+                assertion = inputtag.get('value')
+        # Error handling: If ADFS does not return a SAML assertion response, we should not continue
+        if (assertion == ''):
+            print('Your login failed, please contact launch control or check token/username/passwd and try again\n')
+            loginSuccessful = False
         else:
-            #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-            payload[name] = value
+            loginSuccessful = True
 
-    # 3rd HTTP request: POST the 2FA token
-    tokenresponse = session.post(response.url, data=payload, verify=sslverification, allow_redirects=True)
-
-    # Extract the SAML assertion and pass it to the AWS STS service
-    # Decode the response and extract the SAML assertion
-    soup = BeautifulSoup(tokenresponse.text, 'html.parser') #.decode('utf8')
-    global assertion
-    assertion = ''
-    # Look for the SAMLResponse attribute of the input tag (determined by analyzing the debug print lines above)
-    for inputtag in soup.find_all('input'):
-        if(inputtag.get('name') == 'SAMLResponse'):
-            assertion = inputtag.get('value')
-    # Error handling, If ADFS does not return a SAML assertion response
-    if (assertion == ''):
-        raise Exception('Your login failed, please contact launch control or check token/username/passwd')
     # Parse the returned assertion and extract the authorized roles
     awsroles = []
     root = ET.fromstring(base64.b64decode(assertion))
@@ -224,11 +240,14 @@ def main():
 
             if section in profiles:
                 fetched_profiles.append(section)
-                setProfile(section, role_arn, principal_arn)
+                token = setProfile(section, role_arn, principal_arn)
                 setConfig(section, profile_region, profile_output)
     else:
-        setProfile(section, role_arn, principal_arn)
+        token = setProfile(section, role_arn, principal_arn)
         setConfig(section, profile_region, profile_output)
+
+    if token is None:
+        raise Exception('Assuming role failed for unknown reasons')
 
     os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
     with open(credentials_path, 'w') as configfile:
