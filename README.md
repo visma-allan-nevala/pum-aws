@@ -8,6 +8,7 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 4) If the SAML assertion contains claims for more than one AWS IAM role, the user is prompted to choose one of them
 5) The SAML assertion is sent to AWS and verified by AWS (Visma's ADFS must be trusted in the AWS account you are trying to log into, this is usually done by VITC when they create the AWS account)
 6) If the SAML assertion is verified successfully, AWS returns temporary security credentials for the chosen role. These credentials can be used for running AWS CLI and are valid for 1 hour.
+7) If the token was saved correctly, the aws cli will be authenticated for the duration of the token's validity.
 
 # Prerequisites
 * [Python 3](https://www.python.org/downloads/)
@@ -15,12 +16,37 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 
 # Installation (if not using Docker)
 
-	git clone git@github.com:Visma-Tech-Cloud-and-VCDM/pum-aws.git
-	cd pum-aws
-	pip install -r requirements.txt
+## Quick Setup with Virtual Environment (Recommended)
+
+For easy setup with a Python virtual environment, use the provided helper scripts:
+
+**Windows:**
+```bash
+scripts\setup.bat
+```
+
+**Linux/macOS:**
+```bash
+./scripts/setup.sh
+```
+
+The setup script will:
+- Create a Python virtual environment in the `venv` directory
+- Install all required dependencies from `requirements.txt`
+- Provide instructions for running the application
+
+## Manual Installation
+
+If you prefer to install dependencies manually:
+
+```bash
+pip install -r requirements.txt
+```
 
 # Usage (Docker)
 If you are running (or have access to) a Docker host, you can build a Docker image to run pum-aws commands without the hassle to setup a Python development environment.
+
+Note, that there is a known issue that Docker resolves FQDNs internally, and some tools *might* not route requests correctly. If you run into issues while using Docker, try running the application directly to see if the issue persists.   
 
 Simply execute *pum-aws.bat* from Windows, or *pum-aws.sh* from Linux/Macos (after adding execute permission by running ```chmod +x pum-aws.sh``` in a terminal).
 
@@ -41,10 +67,60 @@ aws s3api list-buckets
 ```
 
 # Usage (if not using Docker)
-	
-	python pum_aws.py
-	<provide privileged user credentials and 2fa token>
-	aws s3api list-buckets
+
+## Using Virtual Environment Helper Scripts (Recommended)
+
+The provided helper scripts will automatically set up the virtual environment if it doesn't exist and then run the application. This is the easiest way to get started:
+
+**Windows:**
+```bash
+scripts\run.bat
+```
+
+**Linux/macOS:**
+```bash
+./scripts/run.sh
+```
+
+The run scripts will:
+- Automatically detect if the virtual environment exists
+- Run the setup script if needed
+- Activate the virtual environment
+- Execute `pum_aws.py` with any arguments you provide
+
+You can also pass arguments directly to the application:
+
+**Windows:**
+```bash
+scripts\run.bat --profile test --account 123123123
+```
+
+**Linux/macOS:**
+```bash
+./scripts/run.sh --profile test --account 123123123
+```
+
+## Manual Execution
+
+If you installed dependencies manually or want to activate the virtual environment yourself:
+
+```bash
+python pum_aws.py
+```
+
+Or if using a virtual environment manually:
+
+**Windows:**
+```bash
+venv\Scripts\activate.bat
+python pum_aws.py
+```
+
+**Linux/macOS:**
+```bash
+source venv/bin/activate
+python pum_aws.py
+```
 	
 ## Example 1
 

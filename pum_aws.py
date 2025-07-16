@@ -93,9 +93,9 @@ def implementation():
     loginSuccessful = None
     while loginSuccessful is None or (args.retry and loginSuccessful is False):
         if lastuser != "":
-            username = input("Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
+            username = input(r"Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
         else:
-            username = input("Privileged user (e.g. adm\dev_aly): ")
+            username = input(r"Privileged user (e.g. adm\dev_aly): ")
 
         if username == "":
             username = lastuser
@@ -236,7 +236,7 @@ def implementation():
             role_arn = awsrole.split(',')[0]
             principal_arn = awsrole.split(',')[1]
             section = awsrole.split(':role/')[1]
-            section = re.split('\W+', section)[0]
+            section = re.split(r'\W+', section)[0]
 
             if section in profiles:
                 fetched_profiles.append(section)
