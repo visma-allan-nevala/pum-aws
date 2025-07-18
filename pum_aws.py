@@ -48,7 +48,7 @@ def get_env_with_fallback(env_var: str, fallback: Any = None) -> Any:
             return fallback
     return value
 
-def haveOnePassword(item_name: str) -> bool:
+def haveOnePassword() -> bool:
     try:
         check_output(["op"])
         return True
@@ -81,9 +81,9 @@ def setProfile(
 def setConfig(section: str, region: str, output: str, config_config: configparser.RawConfigParser) -> None:
     # Write the AWS config file
     if section != "default":
-        config_section="profile " + section
+        config_section = f"profile {section}"
     else:
-        config_section=section
+        config_section = section
 
     if not config_config.has_section(config_section):
         config_config.add_section(config_section)
@@ -129,21 +129,21 @@ def implementation() -> Tuple[str, str, str, str]:
     default_no_op = get_env_with_fallback('PUM_NO_OP', False)
     
     # Use environment defaults for 1Password, but keep existing logic as fallback
-    default_op_account = get_env_with_fallback('PUM_OP_ACCOUNT', os.environ.get('PUM_OP_ACCOUNT', "visma"))
-    default_op_item_name = get_env_with_fallback('PUM_OP_ITEM', os.environ.get('PUM_OP_ITEM_NAME', "Federation ADM"))
+    default_op_account = get_env_with_fallback('PUM_OP_ACCOUNT', "visma")
+    default_op_item_name = get_env_with_fallback('PUM_OP_ITEM', "Federation ADM")
 
     parser = argparse.ArgumentParser(description="Get temporary AWS credentials using Visma federated access with privileged users.")
     parser.add_argument("--role", help="Role name", default=default_role, metavar="PUM_ROLE")
-    parser.add_argument("-p", "--profile", default=default_profile, help="Store credentials for a non-default AWS profile (default: " + str(default_profile) + ")", metavar="PUM_PROFILE")
+    parser.add_argument("-p", "--profile", default=default_profile, help=f"Store credentials for a non-default AWS profile (default: {default_profile})", metavar="PUM_PROFILE")
     parser.add_argument("-a", "--account", help="Filter roles for the given AWS account", default=default_account, metavar="PUM_ACCOUNT")
-    parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: " + str(default_region) + ")", default=default_region, metavar="PUM_REGION")
+    parser.add_argument("-r", "--region", help=f"Configure profile for the specified AWS region (default: {default_region})", default=default_region, metavar="PUM_REGION")
     parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default=default_profiles, metavar="PUM_PROFILES")
-    parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default=default_duration, metavar="PUM_DURATION")
+    parser.add_argument("-d", "--duration", help="Token duration time in hours (min: 1, max: 3)", default=default_duration, metavar="PUM_DURATION")
     parser.add_argument("-R", "--retry", help="Retry on failed login (default: False)", default=default_retry, action='store_true')
     parser.add_argument("-u", "--username", help="Username to use. 1Pass username takes precedence", default=default_username, metavar="PUM_USERNAME")
     
-    parser.add_argument("--op-account", help="Name of the 1Password account (default: '" + default_op_account + "')", default=default_op_account, dest="op_account", metavar="PUM_OP_ACCOUNT")
-    parser.add_argument("--op-item", help="Name of the 1Password item (default: '" + default_op_item_name + "')", default=default_op_item_name, dest="op_item", metavar="PUM_OP_ITEM")
+    parser.add_argument("--op-account", help=f"Name of the 1Password account (default: '{default_op_account}')", default=default_op_account, dest="op_account", metavar="PUM_OP_ACCOUNT")
+    parser.add_argument("--op-item", help=f"Name of the 1Password item (default: '{default_op_item_name}')", default=default_op_item_name, dest="op_item", metavar="PUM_OP_ITEM")
     parser.add_argument("-o", "--no-op", help="Disable 1Pass CLI integration (default: False)", default=default_no_op, action='store_true')
 
     args = parser.parse_args()
@@ -153,7 +153,12 @@ def implementation() -> Tuple[str, str, str, str]:
     fetch_profiles = args.profiles
     username = args.username
 
-    tokenDuration = int(args.duration) * 60 * 60
+    # Convert hours to seconds, clamping between 1 and 3 hours
+    SECONDS_PER_HOUR = 3600
+    duration_hours = max(1, min(3, int(args.duration)))  # Clamp between 1 and 3
+    if duration_hours != int(args.duration):
+        print(f"Warning: Duration clamped from {args.duration} to {duration_hours} hours (valid range: 1-3)")
+    tokenDuration = duration_hours * SECONDS_PER_HOUR
 
     profile_region = args.region
         
@@ -171,9 +176,9 @@ def implementation() -> Tuple[str, str, str, str]:
     firstTry: bool = True
     passwordPreset: bool = False
     usernamePreset: bool = False
-    print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
+    print(f"Warning: This script will overwrite your AWS credentials stored at {credentials_path}, section [{section}]\n")
     while loginSuccessful is None or (args.retry and loginSuccessful is False):
-        if not args.no_op and haveOnePassword(args.op_item):
+        if not args.no_op and haveOnePassword():
             try:
                 _signinToken = check_output(["op", "signin", "--account", args.op_account, "--raw"])
                 secret = json.loads(check_output(["op", "item", "get", args.op_item, "--format", "json", "--session", _signinToken.decode('utf-8')]))
@@ -190,21 +195,21 @@ def implementation() -> Tuple[str, str, str, str]:
         if username is None or (firstTry is False and usernamePreset is False):
             # Get the federated credentials from the user
             if lastuser != "":
-                username = input(r"Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
+                username = input(rf"Privileged user (e.g. adm\dev_aly) [{lastuser}]: ")
             else:
                 username = input(r"Privileged user (e.g. adm\dev_aly): ")
 
             if username == "":
                 username = lastuser
         else:
-            if (firstTry):
+            if firstTry:
                 usernamePreset = True
-            print("Using username: " + username)
+            print(f"Using username: {username}")
 
         if password is None or (firstTry is False and passwordPreset is False):
             password = getpass.getpass(prompt='Domain password: ')
         else:
-            if (firstTry):
+            if firstTry:
                 passwordPreset = True
             print("Password already set.")
 
@@ -242,7 +247,7 @@ def implementation() -> Tuple[str, str, str, str]:
         response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
         
         #Get the challenge token from the user to pass to LinOTP (challengeQuestionInput)
-        if (not firstTry):
+        if not firstTry:
             otp = None
 
         mfa_token: str
@@ -284,7 +289,7 @@ def implementation() -> Tuple[str, str, str, str]:
                         assertion = value
         # Error handling: If ADFS does not return a SAML assertion response, we should not continue
         firstTry = False
-        if assertion == '':
+        if not assertion:
             print('Your login failed, please contact launch control or check token/username/passwd and try again\n')
             loginSuccessful = False
         else:
@@ -294,15 +299,15 @@ def implementation() -> Tuple[str, str, str, str]:
     awsroles: list[str] = []
     root = ET.fromstring(base64.b64decode(assertion))
     for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
-        if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
+        if saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role':
             for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
                 if saml2attributevalue.text:
                     awsroles.append(saml2attributevalue.text)
     # Note the format of the attribute value should be role_arn,principal_arn
     for awsrole in awsroles:
         chunks = awsrole.split(',')
-        if'saml-provider' in chunks[0]:
-            newawsrole = chunks[1] + ',' + chunks[0]
+        if 'saml-provider' in chunks[0]:
+            newawsrole = f"{chunks[1]},{chunks[0]}"
             index = awsroles.index(awsrole)
             awsroles.insert(index, newawsrole)
             awsroles.remove(awsrole)
@@ -314,19 +319,19 @@ def implementation() -> Tuple[str, str, str, str]:
     # Filter roles based on the specified account
     if account is not None:
         awsroles = list(filter(lambda x: account in x, awsroles))
-        filterParts.append("account: '" + account + "'")
+        filterParts.append(f"account: '{account}'")
 
     # Filter roles based on role name
     if args.role is not None:
-        awsroles = list(filter(lambda x: ("role/" + args.role) in x, awsroles))
-        filterParts.append("role: '" + args.role + "'")
+        awsroles = list(filter(lambda x: (f"role/{args.role}") in x, awsroles))
+        filterParts.append(f"role: '{args.role}'")
 
     # Check if no roles found after filtering
     if len(awsroles) == 0:
-        print('No role found for ' + ", ".join(filterParts) + '. Available roles:')
+        print(f'No role found for {", ".join(filterParts)}. Available roles:')
         for awsrole in unfilteredRoles:
             print(awsrole.split(',')[0])
-        raise Exception('No role found for ' + ", ".join(filterParts))
+        raise Exception(f'No role found for {", ".join(filterParts)}')
 
     # If user has more than one role, ask the user which one they want, otherwise just proceed
     awsroles.sort()
@@ -415,7 +420,7 @@ def implementation() -> Tuple[str, str, str, str]:
     else:
         print(f'Your AWS access key pair has been stored in the AWS configuration file {credentials_path}')
     
-    print('Note that it will expire in ' + str(datetime.timedelta(seconds=tokenDuration)) + ' hours')
+    print(f'Note that it will expire in {datetime.timedelta(seconds=tokenDuration)} hours')
     print('----------------------------------------------------------------\n')
 
     return username, token['Credentials']['AccessKeyId'], token['Credentials']['SecretAccessKey'], token['Credentials']['SessionToken']
