@@ -119,7 +119,7 @@ def implementation() -> Tuple[str, str, str, str]:
 
     # Get environment variable defaults
     default_profile = get_env_with_fallback('PUM_PROFILE', 'default')
-    default_region = get_env_with_fallback('PUM_REGION', 'eu-west-1')
+    default_region = get_env_with_fallback('PUM_REGION', 'eu-central-1')
     default_profiles = get_env_with_fallback('PUM_PROFILES', '')
     default_duration = get_env_with_fallback('PUM_DURATION', '1')
     default_retry = get_env_with_fallback('PUM_RETRY', False)

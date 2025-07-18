@@ -169,7 +169,7 @@ All command-line arguments can be configured via environment variables:
 | `PUM_ROLE`           | `--role`               | Role name                               | -                |
 | `PUM_PROFILE`        | `--profile`            | AWS profile name                        | `default`        |
 | `PUM_ACCOUNT`        | `--account`            | Filter roles for AWS account            | -                |
-| `PUM_REGION`         | `--region`             | AWS region                              | `eu-west-1`      |
+| `PUM_REGION`         | `--region`             | AWS region                              | `eu-central-1`   |
 | `PUM_PROFILES`       | `--profiles`           | Pre-defined profiles (comma-separated)  | -                |
 | `PUM_DURATION`       | `--duration`           | Token duration in hours                 | `1`              |
 | `PUM_RETRY`          | `--retry`              | Retry on failed login                   | `false`          |
