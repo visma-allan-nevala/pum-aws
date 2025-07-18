@@ -20,6 +20,34 @@ from typing import Optional, Dict, Tuple, Any
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
+def load_env_file() -> None:
+    """Load environment variables from .env file if it exists."""
+    env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if os.path.exists(env_file):
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    # Only set if not already in environment (CLI args take precedence)
+                    if key not in os.environ:
+                        os.environ[key] = value
+
+def get_env_with_fallback(env_var: str, fallback: Any = None) -> Any:
+    """Get environment variable with fallback value."""
+    value = os.environ.get(env_var)
+    if value is None:
+        return fallback
+    # Convert string values to appropriate types
+    if isinstance(fallback, bool):
+        return value.lower() in ('true', '1', 'yes', 'on')
+    elif isinstance(fallback, int):
+        try:
+            return int(value)
+        except ValueError:
+            return fallback
+    return value
+
 def haveOnePassword(item_name: str) -> bool:
     try:
         check_output(["op"])
@@ -71,6 +99,9 @@ def main() -> None:
         exit(0)
 
 def implementation() -> Tuple[str, str, str, str]:    
+    # Load environment variables from .env file
+    load_env_file()
+    
     # Variables
     username: Optional[str] = None
     password: Optional[str] = None
@@ -86,21 +117,34 @@ def implementation() -> Tuple[str, str, str, str]:
     config_path: str = os.path.join(os.path.expanduser("~"), ".aws", "config")
     pumaws_configpath: str = os.path.join(os.path.expanduser("~"), ".pum-aws")
 
-    parser = argparse.ArgumentParser(description="Get temporary AWS credentials using Visma federated access with privileged users.")
-    parser.add_argument("--role", help="Role name")
-    parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
-    parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
-    parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
-    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default="")
-    parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default="1")
-    parser.add_argument("-R", "--retry", help="Retry on failed login (default: False)", default=False, action='store_true')
-    parser.add_argument("-u", "--username", help="Username to use. 1Pass username takes precedence", default=None)
+    # Get environment variable defaults
+    default_profile = get_env_with_fallback('PUM_PROFILE', 'default')
+    default_region = get_env_with_fallback('PUM_REGION', 'eu-west-1')
+    default_profiles = get_env_with_fallback('PUM_PROFILES', '')
+    default_duration = get_env_with_fallback('PUM_DURATION', '1')
+    default_retry = get_env_with_fallback('PUM_RETRY', False)
+    default_username = get_env_with_fallback('PUM_USERNAME', None)
+    default_role = get_env_with_fallback('PUM_ROLE', None)
+    default_account = get_env_with_fallback('PUM_ACCOUNT', None)
+    default_no_op = get_env_with_fallback('PUM_NO_OP', False)
     
-    default_op_account = os.environ.get('PUM_OP_ACCOUNT', "visma")
-    default_op_item_name = os.environ.get('PUM_OP_ITEM_NAME', "Federation ADM")
-    parser.add_argument("--op-account", help="Name of the 1Password account (default: '" + default_op_account + "')", default=default_op_account, dest="op_account")
-    parser.add_argument("--op-item", help="Name of the 1Password item (default: '" + default_op_item_name + "')", default=default_op_item_name, dest="op_item")
-    parser.add_argument("-o", "--no-op", help="Disable 1Pass CLI integration (default: False)", default=False, action='store_true')
+    # Use environment defaults for 1Password, but keep existing logic as fallback
+    default_op_account = get_env_with_fallback('PUM_OP_ACCOUNT', os.environ.get('PUM_OP_ACCOUNT', "visma"))
+    default_op_item_name = get_env_with_fallback('PUM_OP_ITEM', os.environ.get('PUM_OP_ITEM_NAME', "Federation ADM"))
+
+    parser = argparse.ArgumentParser(description="Get temporary AWS credentials using Visma federated access with privileged users.")
+    parser.add_argument("--role", help="Role name", default=default_role, metavar="PUM_ROLE")
+    parser.add_argument("-p", "--profile", default=default_profile, help="Store credentials for a non-default AWS profile (default: " + str(default_profile) + ")", metavar="PUM_PROFILE")
+    parser.add_argument("-a", "--account", help="Filter roles for the given AWS account", default=default_account, metavar="PUM_ACCOUNT")
+    parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: " + str(default_region) + ")", default=default_region, metavar="PUM_REGION")
+    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default=default_profiles, metavar="PUM_PROFILES")
+    parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default=default_duration, metavar="PUM_DURATION")
+    parser.add_argument("-R", "--retry", help="Retry on failed login (default: False)", default=default_retry, action='store_true')
+    parser.add_argument("-u", "--username", help="Username to use. 1Pass username takes precedence", default=default_username, metavar="PUM_USERNAME")
+    
+    parser.add_argument("--op-account", help="Name of the 1Password account (default: '" + default_op_account + "')", default=default_op_account, dest="op_account", metavar="PUM_OP_ACCOUNT")
+    parser.add_argument("--op-item", help="Name of the 1Password item (default: '" + default_op_item_name + "')", default=default_op_item_name, dest="op_item", metavar="PUM_OP_ITEM")
+    parser.add_argument("-o", "--no-op", help="Disable 1Pass CLI integration (default: False)", default=default_no_op, action='store_true')
 
     args = parser.parse_args()
 
