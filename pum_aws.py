@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #
 
+from __future__ import annotations
+
 import datetime
 import boto3
 import requests
@@ -11,20 +13,30 @@ import xml.etree.ElementTree as ET
 import re
 import os
 import argparse
-from bs4 import BeautifulSoup
-from subprocess import check_output,CalledProcessError
+from bs4 import BeautifulSoup, Tag
+from subprocess import check_output, CalledProcessError
 import json
+from typing import Optional, Dict, Tuple, Any
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-def haveOnePassword(item_name):
+def haveOnePassword(item_name: str) -> bool:
     try:
         check_output(["op"])
         return True
     except:  # noqa: E722
         return False
 
-def setProfile(section, role_arn, principal_arn, client, credentials_config, assertion, tokenDuration, profile_region):
+def setProfile(
+    section: str, 
+    role_arn: str, 
+    principal_arn: str, 
+    client: Any, 
+    credentials_config: configparser.RawConfigParser, 
+    assertion: str, 
+    tokenDuration: int, 
+    profile_region: str
+) -> Optional[Dict[str, Any]]:
     token = client.assume_role_with_saml(RoleArn = role_arn, PrincipalArn = principal_arn, SAMLAssertion = assertion, DurationSeconds = tokenDuration)
     try:
         if not credentials_config.has_section(section):
@@ -36,8 +48,9 @@ def setProfile(section, role_arn, principal_arn, client, credentials_config, ass
         return token
     except:  # noqa: E722
         print(f"Access denied to {section}")
+        return None
 
-def setConfig(section, region, output, config_config):
+def setConfig(section: str, region: str, output: str, config_config: configparser.RawConfigParser) -> None:
     # Write the AWS config file
     if section != "default":
         config_section="profile " + section
@@ -50,28 +63,28 @@ def setConfig(section, region, output, config_config):
     config_config.set(config_section, 'output', output)
 
 # noinspection PyPackageRequirements
-def main():
+def main() -> None:
     try:
         implementation()
     except KeyboardInterrupt:
         print("\n\nExiting...")
         exit(0)
 
-def implementation():    
+def implementation() -> Tuple[str, str, str, str]:    
     # Variables
-    username = None
-    password = None
-    otp = None
-    token = None
-    role_arn = None
-    principal_arn = None
-    assertion = None
-    profile_output = 'json'
-    sslverification = True
-    idpentryurl = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
-    credentials_path = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
-    config_path = os.path.join(os.path.expanduser("~"), ".aws", "config")
-    pumaws_configpath = os.path.join(os.path.expanduser("~"), ".pum-aws")
+    username: Optional[str] = None
+    password: Optional[str] = None
+    otp: Optional[str] = None
+    token: Optional[Dict[str, Any]] = None
+    role_arn: str = ""
+    principal_arn: str = ""
+    assertion: str = ""
+    profile_output: str = 'json'
+    sslverification: bool = True
+    idpentryurl: str = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
+    credentials_path: str = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
+    config_path: str = os.path.join(os.path.expanduser("~"), ".aws", "config")
+    pumaws_configpath: str = os.path.join(os.path.expanduser("~"), ".pum-aws")
 
     parser = argparse.ArgumentParser(description="Get temporary AWS credentials using Visma federated access with privileged users.")
     parser.add_argument("--role", help="Role name")
@@ -103,17 +116,17 @@ def implementation():
     # Read last used user name
     pumaws_config = configparser.RawConfigParser()
     pumaws_config.read(pumaws_configpath)
-    lastuser = ""
-    use_aliases = "false"
+    lastuser: str = ""
+    use_aliases: str = "false"
     if pumaws_config.has_section("default"):
         lastuser = pumaws_config.get("default", "username")
         if pumaws_config.has_option("default", "use_account_aliases"):
             use_aliases = pumaws_config.get("default", "use_account_aliases")
 
-    loginSuccessful = None
-    firstTry = True
-    passwordPreset = False
-    usernamePreset = False
+    loginSuccessful: Optional[bool] = None
+    firstTry: bool = True
+    passwordPreset: bool = False
+    usernamePreset: bool = False
     print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
     while loginSuccessful is None or (args.retry and loginSuccessful is False):
         if not args.no_op and haveOnePassword(args.op_item):
@@ -160,24 +173,26 @@ def implementation():
                 pumaws_config.write(configfile)
 
         # 1st HTTP request: GET the login form
-        session = requests.Session()
+        session: requests.Session = requests.Session()
         # Parse the response and extract all the necessary values
         formresponse = session.get(idpentryurl, verify=sslverification, allow_redirects=True)
         idpauthformsubmiturl = formresponse.url
         formsoup = BeautifulSoup(formresponse.text, 'html.parser') #.decode('utf8')
-        payload = {}
+        payload: Dict[str, str] = {}
         for inputtag in formsoup.find_all(re.compile('(INPUT|input)')):
-            name = inputtag.get('name', '')
-            value = inputtag.get('value', '')
-            if "username" in name.lower():
-                payload[name] = username
-            elif "authmethod" in name.lower():
-                payload[name] = "FormsAuthentication"
-            elif "password" in name.lower():
-                payload[name] = password
-            else:
-                #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-                payload[name] = value
+            if isinstance(inputtag, Tag):
+                name = inputtag.get('name', '')
+                value = inputtag.get('value', '')
+                if isinstance(name, str) and isinstance(value, str):
+                    if "username" in name.lower():
+                        payload[name] = username or ""
+                    elif "authmethod" in name.lower():
+                        payload[name] = "FormsAuthentication"
+                    elif "password" in name.lower():
+                        payload[name] = password or ""
+                    else:
+                        #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+                        payload[name] = value
 
         # 2nd HTTP request: POST the username and password
         response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
@@ -186,25 +201,28 @@ def implementation():
         if (not firstTry):
             otp = None
 
+        mfa_token: str
         if otp is not None:
-            token = otp
+            mfa_token = otp
         else:
             print("Visma Google Auth 2FA Token:", end=" ")
-            token = input()
+            mfa_token = input()
         
         # Build nested data structure, parse the response and extract all the necessary values
         tokensoup = BeautifulSoup(response.text, 'html.parser') #.decode('utf8')
         payload = {}
         for inputtag in tokensoup.find_all(re.compile('(INPUT|input)')):
-            name = inputtag.get('name','')
-            value = inputtag.get('value','')
-            if "challenge" in name.lower():
-                payload[name] = token
-            elif "authmethod" in name.lower():
-                payload[name] = "VismaMFAAdapter"
-            else:
-                #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-                payload[name] = value
+            if isinstance(inputtag, Tag):
+                name = inputtag.get('name','')
+                value = inputtag.get('value','')
+                if isinstance(name, str) and isinstance(value, str):
+                    if "challenge" in name.lower():
+                        payload[name] = mfa_token
+                    elif "authmethod" in name.lower():
+                        payload[name] = "VismaMFAAdapter"
+                    else:
+                        #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+                        payload[name] = value
 
         # 3rd HTTP request: POST the 2FA token
         tokenresponse = session.post(response.url, data=payload, verify=sslverification, allow_redirects=True)
@@ -212,26 +230,30 @@ def implementation():
         # Extract the SAML assertion and pass it to the AWS STS service
         # Decode the response and extract the SAML assertion
         soup = BeautifulSoup(tokenresponse.text, 'html.parser') #.decode('utf8')
-        assertion = ''
+        assertion: str = ''
         # Look for the SAMLResponse attribute of the input tag (determined by analyzing the debug print lines above)
         for inputtag in soup.find_all('input'):
-            if(inputtag.get('name') == 'SAMLResponse'):
-                assertion = inputtag.get('value')
+            if isinstance(inputtag, Tag):
+                if inputtag.get('name') == 'SAMLResponse':
+                    value = inputtag.get('value')
+                    if isinstance(value, str):
+                        assertion = value
         # Error handling: If ADFS does not return a SAML assertion response, we should not continue
         firstTry = False
-        if (assertion == ''):
+        if assertion == '':
             print('Your login failed, please contact launch control or check token/username/passwd and try again\n')
             loginSuccessful = False
         else:
             loginSuccessful = True
 
     # Parse the returned assertion and extract the authorized roles
-    awsroles = []
+    awsroles: list[str] = []
     root = ET.fromstring(base64.b64decode(assertion))
     for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
         if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
             for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
-                awsroles.append(saml2attributevalue.text)
+                if saml2attributevalue.text:
+                    awsroles.append(saml2attributevalue.text)
     # Note the format of the attribute value should be role_arn,principal_arn
     for awsrole in awsroles:
         chunks = awsrole.split(',')
@@ -241,10 +263,10 @@ def implementation():
             awsroles.insert(index, newawsrole)
             awsroles.remove(awsrole)
 
-    unfilteredRoles = awsroles.copy()
+    unfilteredRoles: list[str] = awsroles.copy()
     unfilteredRoles.sort()
 
-    filterParts = []
+    filterParts: list[str] = []
     # Filter roles based on the specified account
     if account is not None:
         awsroles = list(filter(lambda x: account in x, awsroles))
@@ -293,6 +315,9 @@ def implementation():
         role_arn = awsroles[0].split(',')[0]
         principal_arn = awsroles[0].split(',')[1]
 
+    # Ensure role_arn and principal_arn are properly set
+    assert role_arn and principal_arn, "Role ARN and Principal ARN must be set"
+
     # Write the AWS STS token into the AWS credential file
     credentials_config = configparser.RawConfigParser()
     credentials_config.read(credentials_path)
@@ -302,12 +327,12 @@ def implementation():
 
     client = boto3.client('sts')
 
-    fetched_profiles = []
+    fetched_profiles: list[str] = []
 
     if len(fetch_profiles) > 0:
         # Multi-profile mode: fetch multiple profiles by name
-        profiles = fetch_profiles.split(',')
-        last_token = None
+        profiles: list[str] = fetch_profiles.split(',')
+        last_token: Optional[Dict[str, Any]] = None
         for awsrole in awsroles:
             current_role_arn = awsrole.split(',')[0]
             current_principal_arn = awsrole.split(',')[1]
@@ -327,6 +352,8 @@ def implementation():
 
     if token is None:
         raise Exception('Assuming role failed for unknown reasons')
+    
+    assert username, 'Username cannot be None at this point'
 
     os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
     with open(credentials_path, 'w') as configfile:
