@@ -42,5 +42,6 @@ REM Run the application with all passed arguments
 echo Running pum-aws...
 echo Working directory: %PROJECT_DIR%
 cd /d "%PROJECT_DIR%"
+echo:
 python pum_aws.py %*
 popd
