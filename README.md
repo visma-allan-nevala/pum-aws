@@ -11,7 +11,7 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 7) If the token was saved correctly, the aws cli will be authenticated for the duration of the token's validity.
 
 # Prerequisites
-* [Python 3](https://www.python.org/downloads/)
+* [Python 3.9+](https://www.python.org/downloads/) (Required: Python 3.9 or higher)
 * or, [Docker](https://www.docker.com/products/docker-desktop)
 
 # Installation (if not using Docker)

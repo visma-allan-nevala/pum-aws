@@ -3,6 +3,15 @@
 
 from __future__ import annotations
 
+import sys
+
+# Check Python version requirement (3.9+)
+if sys.version_info < (3, 9):
+    print("Error: This application requires Python 3.9 or higher.")
+    print(f"Current Python version: {'.'.join(map(str, sys.version_info[:3]))}")
+    print("Please upgrade your Python installation.")
+    sys.exit(1)
+
 import datetime
 import boto3
 import requests
@@ -48,7 +57,7 @@ def get_env_with_fallback(env_var: str, fallback: Any = None) -> Any:
             return fallback
     return value
 
-def haveOnePassword() -> bool:
+def haveOnePasswordCLI() -> bool:
     try:
         check_output(["op"])
         return True
@@ -178,7 +187,7 @@ def implementation() -> Tuple[str, str, str, str]:
     usernamePreset: bool = False
     print(f"Warning: This script will overwrite your AWS credentials stored at {credentials_path}, section [{section}]\n")
     while loginSuccessful is None or (args.retry and loginSuccessful is False):
-        if not args.no_op and haveOnePassword():
+        if not args.no_op and haveOnePasswordCLI():
             try:
                 _signinToken = check_output(["op", "signin", "--account", args.op_account, "--raw"])
                 secret = json.loads(check_output(["op", "item", "get", args.op_item, "--format", "json", "--session", _signinToken.decode('utf-8')]))

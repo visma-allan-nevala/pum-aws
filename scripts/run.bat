@@ -42,6 +42,17 @@ REM Run the application with all passed arguments
 echo Running pum-aws...
 echo Working directory: %PROJECT_DIR%
 cd /d "%PROJECT_DIR%"
+
+REM Check Python version (requires Python 3.9+)
+echo Checking Python version...
+python -c "import sys; exit(0) if sys.version_info >= (3, 9) else exit(1)" >nul 2>&1
+if errorlevel 1 (
+    echo Warning: This application requires Python 3.9 or higher.
+    python -c "import sys; print('Current Python version:', '.'.join(map(str, sys.version_info[:3])))"
+    echo Please upgrade your Python installation.
+    pause
+)
+
 echo:
 python pum_aws.py %*
 popd

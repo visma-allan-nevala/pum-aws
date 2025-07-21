@@ -1,3 +1,8 @@
+# Python version requirement: 3.9+
+# This application uses modern Python features including:
+# - Built-in generic types (list[str] instead of List[str])
+# - from __future__ import annotations
+
 # HTTP library for making requests
 requests>=2.31.0
 
