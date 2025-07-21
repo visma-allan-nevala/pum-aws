@@ -252,6 +252,7 @@ def implementation() -> Tuple[str, str, str, str]:
 
         mfa_token: str
         if otp is not None:
+            print("2FA Token read from 1Password.")
             mfa_token = otp
         else:
             print("Visma Google Auth 2FA Token:", end=" ")
