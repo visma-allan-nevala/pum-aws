@@ -48,4 +48,5 @@ fi
 echo "Running pum-aws..."
 echo "Working directory: $PROJECT_DIR"
 cd "$PROJECT_DIR"
+echo ""
 python pum_aws.py "$@"
