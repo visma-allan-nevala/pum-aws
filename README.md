@@ -11,7 +11,7 @@ The purpose of this script is to allow Visma employees to work with the [AWS CLI
 7) If the token was saved correctly, the aws cli will be authenticated for the duration of the token's validity.
 
 # Prerequisites
-* [Python 3](https://www.python.org/downloads/)
+* [Python 3.9+](https://www.python.org/downloads/) (Required: Python 3.9 or higher)
 * or, [Docker](https://www.docker.com/products/docker-desktop)
 
 # Installation (if not using Docker)
@@ -132,6 +132,64 @@ To override the default names:
 * item: use environment variable `PUM_OP_ITEM_NAME` or parameter `--op-item`
 
 OTP is also supported, the attribute must be named `otp` in 1Password.
+
+## Environment Variable Configuration
+
+You can configure default values for command-line arguments using environment variables. This is useful for setting common defaults without having to specify them every time.
+
+### Setting up local configuration
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` to configure your default values:
+   ```bash
+   # Example .env configuration
+   PUM_PROFILE=development
+   PUM_REGION=eu-central-1
+   PUM_DURATION=2
+   PUM_USERNAME=adm\your_username
+   PUM_OP_ACCOUNT=visma
+   PUM_OP_ITEM=Federation ADM
+   ```
+
+3. Run the script normally - environment variables will be used as defaults:
+   ```bash
+   python pum_aws.py
+   ```
+
+### Supported Environment Variables
+
+All command-line arguments can be configured via environment variables:
+
+| Environment Variable | Command Line Argument  | Description                             | Default          |
+|----------------------|------------------------|-----------------------------------------|------------------|
+| `PUM_ROLE`           | `--role`               | Role name                               | -                |
+| `PUM_PROFILE`        | `--profile`            | AWS profile name                        | `default`        |
+| `PUM_ACCOUNT`        | `--account`            | Filter roles for AWS account            | -                |
+| `PUM_REGION`         | `--region`             | AWS region                              | `eu-central-1`   |
+| `PUM_PROFILES`       | `--profiles`           | Pre-defined profiles (comma-separated)  | -                |
+| `PUM_DURATION`       | `--duration`           | Token duration in hours                 | `1`              |
+| `PUM_RETRY`          | `--retry`              | Retry on failed login                   | `false`          |
+| `PUM_USERNAME`       | `--username`           | Username to use                         | -                |
+| `PUM_OP_ACCOUNT`     | `--op-account`         | 1Password account name                  | `visma`          |
+| `PUM_OP_ITEM`        | `--op-item`            | 1Password item name                     | `Federation ADM` |
+| `PUM_NO_OP`          | `--no-op`              | Disable 1Password CLI integration       | `false`          |
+
+### Precedence
+
+Command-line arguments always take precedence over environment variables. This allows you to override defaults when needed:
+
+```bash
+# Uses PUM_PROFILE from .env, but overrides PUM_REGION
+python pum_aws.py --region us-west-2
+```
+
+### Git Integration
+
+The `.env` file is automatically ignored by git (see `.gitignore`), so your local configuration won't be committed to the repository. You can safely store your username and other preferences without affecting other users.
 
 ## Example 1
 

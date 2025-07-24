@@ -1,6 +1,17 @@
 #!/usr/bin/env python
 #
 
+from __future__ import annotations
+
+import sys
+
+# Check Python version requirement (3.9+)
+if sys.version_info < (3, 9):
+    print("Error: This application requires Python 3.9 or higher.")
+    print(f"Current Python version: {'.'.join(map(str, sys.version_info[:3]))}")
+    print("Please upgrade your Python installation.")
+    sys.exit(1)
+
 import datetime
 import boto3
 import requests
@@ -11,20 +22,58 @@ import xml.etree.ElementTree as ET
 import re
 import os
 import argparse
-from bs4 import BeautifulSoup
-from subprocess import check_output,CalledProcessError
+from bs4 import BeautifulSoup, Tag
+from subprocess import check_output, CalledProcessError
 import json
+from typing import Optional, Dict, Tuple, Any
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-def haveOnePassword(item_name):
+def load_env_file() -> None:
+    """Load environment variables from .env file if it exists."""
+    env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if os.path.exists(env_file):
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    # Only set if not already in environment (CLI args take precedence)
+                    if key not in os.environ:
+                        os.environ[key] = value
+
+def get_env_with_fallback(env_var: str, fallback: Any = None) -> Any:
+    """Get environment variable with fallback value."""
+    value = os.environ.get(env_var)
+    if value is None:
+        return fallback
+    # Convert string values to appropriate types
+    if isinstance(fallback, bool):
+        return value.lower() in ('true', '1', 'yes', 'on')
+    elif isinstance(fallback, int):
+        try:
+            return int(value)
+        except ValueError:
+            return fallback
+    return value
+
+def haveOnePasswordCLI() -> bool:
     try:
         check_output(["op"])
         return True
     except:  # noqa: E722
         return False
 
-def setProfile(section, role_arn, principal_arn, client, credentials_config, assertion, tokenDuration, profile_region):
+def setProfile(
+    section: str, 
+    role_arn: str, 
+    principal_arn: str, 
+    client: Any, 
+    credentials_config: configparser.RawConfigParser, 
+    assertion: str, 
+    tokenDuration: int, 
+    profile_region: str
+) -> Optional[Dict[str, Any]]:
     token = client.assume_role_with_saml(RoleArn = role_arn, PrincipalArn = principal_arn, SAMLAssertion = assertion, DurationSeconds = tokenDuration)
     try:
         if not credentials_config.has_section(section):
@@ -36,13 +85,14 @@ def setProfile(section, role_arn, principal_arn, client, credentials_config, ass
         return token
     except:  # noqa: E722
         print(f"Access denied to {section}")
+        return None
 
-def setConfig(section, region, output, config_config):
+def setConfig(section: str, region: str, output: str, config_config: configparser.RawConfigParser) -> None:
     # Write the AWS config file
     if section != "default":
-        config_section="profile " + section
+        config_section = f"profile {section}"
     else:
-        config_section=section
+        config_section = section
 
     if not config_config.has_section(config_section):
         config_config.add_section(config_section)
@@ -50,44 +100,60 @@ def setConfig(section, region, output, config_config):
     config_config.set(config_section, 'output', output)
 
 # noinspection PyPackageRequirements
-def main():
+def main() -> None:
     try:
         implementation()
     except KeyboardInterrupt:
         print("\n\nExiting...")
         exit(0)
 
-def implementation():    
+def implementation() -> Tuple[str, str, str, str]:    
+    # Load environment variables from .env file
+    load_env_file()
+    
     # Variables
-    username = None
-    password = None
-    otp = None
-    token = None
-    role_arn = None
-    principal_arn = None
-    assertion = None
-    profile_output = 'json'
-    sslverification = True
-    idpentryurl = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
-    credentials_path = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
-    config_path = os.path.join(os.path.expanduser("~"), ".aws", "config")
-    pumaws_configpath = os.path.join(os.path.expanduser("~"), ".pum-aws")
+    username: Optional[str] = None
+    password: Optional[str] = None
+    otp: Optional[str] = None
+    token: Optional[Dict[str, Any]] = None
+    role_arn: str = ""
+    principal_arn: str = ""
+    assertion: str = ""
+    profile_output: str = 'json'
+    sslverification: bool = True
+    idpentryurl: str = 'https://federation.visma.com/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices'
+    credentials_path: str = os.path.join(os.path.expanduser("~"), ".aws", "credentials")
+    config_path: str = os.path.join(os.path.expanduser("~"), ".aws", "config")
+    pumaws_configpath: str = os.path.join(os.path.expanduser("~"), ".pum-aws")
+
+    # Get environment variable defaults
+    default_profile = get_env_with_fallback('PUM_PROFILE', 'default')
+    default_region = get_env_with_fallback('PUM_REGION', 'eu-central-1')
+    default_profiles = get_env_with_fallback('PUM_PROFILES', '')
+    default_duration = get_env_with_fallback('PUM_DURATION', '1')
+    default_retry = get_env_with_fallback('PUM_RETRY', False)
+    default_username = get_env_with_fallback('PUM_USERNAME', None)
+    default_role = get_env_with_fallback('PUM_ROLE', None)
+    default_account = get_env_with_fallback('PUM_ACCOUNT', None)
+    default_no_op = get_env_with_fallback('PUM_NO_OP', False)
+    
+    # Use environment defaults for 1Password, but keep existing logic as fallback
+    default_op_account = get_env_with_fallback('PUM_OP_ACCOUNT', "visma")
+    default_op_item_name = get_env_with_fallback('PUM_OP_ITEM', "Federation ADM")
 
     parser = argparse.ArgumentParser(description="Get temporary AWS credentials using Visma federated access with privileged users.")
-    parser.add_argument("--role", help="Role name")
-    parser.add_argument("-p", "--profile", default="default", help="Store credentials for a non-default AWS profile (default: override default credentials)")
-    parser.add_argument("-a", "--account", help="Filter roles for the given AWS account")
-    parser.add_argument("-r", "--region", help="Configure profile for the specified AWS region (default: eu-west-1)", default="eu-west-1")
-    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default="")
-    parser.add_argument("-d", "--duration", help="Token duration time in hours (max: 3)", default="1")
-    parser.add_argument("-R", "--retry", help="Retry on failed login (default: False)", default=False, action='store_true')
-    parser.add_argument("-u", "--username", help="Username to use. 1Pass username takes precedence", default=None)
+    parser.add_argument("--role", help="Role name", default=default_role, metavar="PUM_ROLE")
+    parser.add_argument("-p", "--profile", default=default_profile, help=f"Store credentials for a non-default AWS profile (default: {default_profile})", metavar="PUM_PROFILE")
+    parser.add_argument("-a", "--account", help="Filter roles for the given AWS account", default=default_account, metavar="PUM_ACCOUNT")
+    parser.add_argument("-r", "--region", help=f"Configure profile for the specified AWS region (default: {default_region})", default=default_region, metavar="PUM_REGION")
+    parser.add_argument("-m", "--profiles", help="Fetch pre-defined profiles separated with ,", default=default_profiles, metavar="PUM_PROFILES")
+    parser.add_argument("-d", "--duration", help="Token duration time in hours (min: 1, max: 3)", default=default_duration, metavar="PUM_DURATION")
+    parser.add_argument("-R", "--retry", help="Retry on failed login (default: False)", default=default_retry, action='store_true')
+    parser.add_argument("-u", "--username", help="Username to use. 1Pass username takes precedence", default=default_username, metavar="PUM_USERNAME")
     
-    default_op_account = os.environ.get('PUM_OP_ACCOUNT', "visma")
-    default_op_item_name = os.environ.get('PUM_OP_ITEM_NAME', "Federation ADM")
-    parser.add_argument("--op-account", help="Name of the 1Password account (default: '" + default_op_account + "')", default=default_op_account, dest="op_account")
-    parser.add_argument("--op-item", help="Name of the 1Password item (default: '" + default_op_item_name + "')", default=default_op_item_name, dest="op_item")
-    parser.add_argument("-o", "--no-op", help="Disable 1Pass CLI integration (default: False)", default=False, action='store_true')
+    parser.add_argument("--op-account", help=f"Name of the 1Password account (default: '{default_op_account}')", default=default_op_account, dest="op_account", metavar="PUM_OP_ACCOUNT")
+    parser.add_argument("--op-item", help=f"Name of the 1Password item (default: '{default_op_item_name}')", default=default_op_item_name, dest="op_item", metavar="PUM_OP_ITEM")
+    parser.add_argument("-o", "--no-op", help="Disable 1Pass CLI integration (default: False)", default=default_no_op, action='store_true')
 
     args = parser.parse_args()
 
@@ -96,27 +162,32 @@ def implementation():
     fetch_profiles = args.profiles
     username = args.username
 
-    tokenDuration = int(args.duration) * 60 * 60
+    # Convert hours to seconds, clamping between 1 and 3 hours
+    SECONDS_PER_HOUR = 3600
+    duration_hours = max(1, min(3, int(args.duration)))  # Clamp between 1 and 3
+    if duration_hours != int(args.duration):
+        print(f"Warning: Duration clamped from {args.duration} to {duration_hours} hours (valid range: 1-3)")
+    tokenDuration = duration_hours * SECONDS_PER_HOUR
 
     profile_region = args.region
         
     # Read last used user name
     pumaws_config = configparser.RawConfigParser()
     pumaws_config.read(pumaws_configpath)
-    lastuser = ""
-    use_aliases = "false"
+    lastuser: str = ""
+    use_aliases: str = "false"
     if pumaws_config.has_section("default"):
         lastuser = pumaws_config.get("default", "username")
         if pumaws_config.has_option("default", "use_account_aliases"):
             use_aliases = pumaws_config.get("default", "use_account_aliases")
 
-    loginSuccessful = None
-    firstTry = True
-    passwordPreset = False
-    usernamePreset = False
-    print("Warning: This script will overwrite your AWS credentials stored at "+credentials_path+", section ["+section+"]\n")
+    loginSuccessful: Optional[bool] = None
+    firstTry: bool = True
+    passwordPreset: bool = False
+    usernamePreset: bool = False
+    print(f"Warning: This script will overwrite your AWS credentials stored at {credentials_path}, section [{section}]\n")
     while loginSuccessful is None or (args.retry and loginSuccessful is False):
-        if not args.no_op and haveOnePassword(args.op_item):
+        if not args.no_op and haveOnePasswordCLI():
             try:
                 _signinToken = check_output(["op", "signin", "--account", args.op_account, "--raw"])
                 secret = json.loads(check_output(["op", "item", "get", args.op_item, "--format", "json", "--session", _signinToken.decode('utf-8')]))
@@ -133,21 +204,21 @@ def implementation():
         if username is None or (firstTry is False and usernamePreset is False):
             # Get the federated credentials from the user
             if lastuser != "":
-                username = input(r"Privileged user (e.g. adm\dev_aly) [" + lastuser + "]: ")
+                username = input(rf"Privileged user (e.g. adm\dev_aly) [{lastuser}]: ")
             else:
                 username = input(r"Privileged user (e.g. adm\dev_aly): ")
 
             if username == "":
                 username = lastuser
         else:
-            if (firstTry):
+            if firstTry:
                 usernamePreset = True
-            print("Using username: " + username)
+            print(f"Using username: {username}")
 
         if password is None or (firstTry is False and passwordPreset is False):
             password = getpass.getpass(prompt='Domain password: ')
         else:
-            if (firstTry):
+            if firstTry:
                 passwordPreset = True
             print("Password already set.")
 
@@ -160,51 +231,57 @@ def implementation():
                 pumaws_config.write(configfile)
 
         # 1st HTTP request: GET the login form
-        session = requests.Session()
+        session: requests.Session = requests.Session()
         # Parse the response and extract all the necessary values
         formresponse = session.get(idpentryurl, verify=sslverification, allow_redirects=True)
         idpauthformsubmiturl = formresponse.url
         formsoup = BeautifulSoup(formresponse.text, 'html.parser') #.decode('utf8')
-        payload = {}
+        payload: Dict[str, str] = {}
         for inputtag in formsoup.find_all(re.compile('(INPUT|input)')):
-            name = inputtag.get('name', '')
-            value = inputtag.get('value', '')
-            if "username" in name.lower():
-                payload[name] = username
-            elif "authmethod" in name.lower():
-                payload[name] = "FormsAuthentication"
-            elif "password" in name.lower():
-                payload[name] = password
-            else:
-                #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-                payload[name] = value
+            if isinstance(inputtag, Tag):
+                name = inputtag.get('name', '')
+                value = inputtag.get('value', '')
+                if isinstance(name, str) and isinstance(value, str):
+                    if "username" in name.lower():
+                        payload[name] = username or ""
+                    elif "authmethod" in name.lower():
+                        payload[name] = "FormsAuthentication"
+                    elif "password" in name.lower():
+                        payload[name] = password or ""
+                    else:
+                        #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+                        payload[name] = value
 
         # 2nd HTTP request: POST the username and password
         response = session.post(idpauthformsubmiturl, data=payload, verify=sslverification, allow_redirects=True)
         
         #Get the challenge token from the user to pass to LinOTP (challengeQuestionInput)
-        if (not firstTry):
+        if not firstTry:
             otp = None
 
+        mfa_token: str
         if otp is not None:
-            token = otp
+            print("2FA Token read from 1Password.")
+            mfa_token = otp
         else:
             print("Visma Google Auth 2FA Token:", end=" ")
-            token = input()
+            mfa_token = input()
         
         # Build nested data structure, parse the response and extract all the necessary values
         tokensoup = BeautifulSoup(response.text, 'html.parser') #.decode('utf8')
         payload = {}
         for inputtag in tokensoup.find_all(re.compile('(INPUT|input)')):
-            name = inputtag.get('name','')
-            value = inputtag.get('value','')
-            if "challenge" in name.lower():
-                payload[name] = token
-            elif "authmethod" in name.lower():
-                payload[name] = "VismaMFAAdapter"
-            else:
-                #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-                payload[name] = value
+            if isinstance(inputtag, Tag):
+                name = inputtag.get('name','')
+                value = inputtag.get('value','')
+                if isinstance(name, str) and isinstance(value, str):
+                    if "challenge" in name.lower():
+                        payload[name] = mfa_token
+                    elif "authmethod" in name.lower():
+                        payload[name] = "VismaMFAAdapter"
+                    else:
+                        #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+                        payload[name] = value
 
         # 3rd HTTP request: POST the 2FA token
         tokenresponse = session.post(response.url, data=payload, verify=sslverification, allow_redirects=True)
@@ -212,55 +289,59 @@ def implementation():
         # Extract the SAML assertion and pass it to the AWS STS service
         # Decode the response and extract the SAML assertion
         soup = BeautifulSoup(tokenresponse.text, 'html.parser') #.decode('utf8')
-        assertion = ''
+        assertion: str = ''
         # Look for the SAMLResponse attribute of the input tag (determined by analyzing the debug print lines above)
         for inputtag in soup.find_all('input'):
-            if(inputtag.get('name') == 'SAMLResponse'):
-                assertion = inputtag.get('value')
+            if isinstance(inputtag, Tag):
+                if inputtag.get('name') == 'SAMLResponse':
+                    value = inputtag.get('value')
+                    if isinstance(value, str):
+                        assertion = value
         # Error handling: If ADFS does not return a SAML assertion response, we should not continue
         firstTry = False
-        if (assertion == ''):
+        if not assertion:
             print('Your login failed, please contact launch control or check token/username/passwd and try again\n')
             loginSuccessful = False
         else:
             loginSuccessful = True
 
     # Parse the returned assertion and extract the authorized roles
-    awsroles = []
+    awsroles: list[str] = []
     root = ET.fromstring(base64.b64decode(assertion))
     for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
-        if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
+        if saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role':
             for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
-                awsroles.append(saml2attributevalue.text)
+                if saml2attributevalue.text:
+                    awsroles.append(saml2attributevalue.text)
     # Note the format of the attribute value should be role_arn,principal_arn
     for awsrole in awsroles:
         chunks = awsrole.split(',')
-        if'saml-provider' in chunks[0]:
-            newawsrole = chunks[1] + ',' + chunks[0]
+        if 'saml-provider' in chunks[0]:
+            newawsrole = f"{chunks[1]},{chunks[0]}"
             index = awsroles.index(awsrole)
             awsroles.insert(index, newawsrole)
             awsroles.remove(awsrole)
 
-    unfilteredRoles = awsroles.copy()
+    unfilteredRoles: list[str] = awsroles.copy()
     unfilteredRoles.sort()
 
-    filterParts = []
+    filterParts: list[str] = []
     # Filter roles based on the specified account
     if account is not None:
         awsroles = list(filter(lambda x: account in x, awsroles))
-        filterParts.append("account: '" + account + "'")
+        filterParts.append(f"account: '{account}'")
 
     # Filter roles based on role name
     if args.role is not None:
-        awsroles = list(filter(lambda x: ("role/" + args.role) in x, awsroles))
-        filterParts.append("role: '" + args.role + "'")
+        awsroles = list(filter(lambda x: (f"role/{args.role}") in x, awsroles))
+        filterParts.append(f"role: '{args.role}'")
 
     # Check if no roles found after filtering
     if len(awsroles) == 0:
-        print('No role found for ' + ", ".join(filterParts) + '. Available roles:')
+        print(f'No role found for {", ".join(filterParts)}. Available roles:')
         for awsrole in unfilteredRoles:
             print(awsrole.split(',')[0])
-        raise Exception('No role found for ' + ", ".join(filterParts))
+        raise Exception(f'No role found for {", ".join(filterParts)}')
 
     # If user has more than one role, ask the user which one they want, otherwise just proceed
     awsroles.sort()
@@ -293,6 +374,9 @@ def implementation():
         role_arn = awsroles[0].split(',')[0]
         principal_arn = awsroles[0].split(',')[1]
 
+    # Ensure role_arn and principal_arn are properly set
+    assert role_arn and principal_arn, "Role ARN and Principal ARN must be set"
+
     # Write the AWS STS token into the AWS credential file
     credentials_config = configparser.RawConfigParser()
     credentials_config.read(credentials_path)
@@ -302,12 +386,12 @@ def implementation():
 
     client = boto3.client('sts')
 
-    fetched_profiles = []
+    fetched_profiles: list[str] = []
 
     if len(fetch_profiles) > 0:
         # Multi-profile mode: fetch multiple profiles by name
-        profiles = fetch_profiles.split(',')
-        last_token = None
+        profiles: list[str] = fetch_profiles.split(',')
+        last_token: Optional[Dict[str, Any]] = None
         for awsrole in awsroles:
             current_role_arn = awsrole.split(',')[0]
             current_principal_arn = awsrole.split(',')[1]
@@ -327,6 +411,8 @@ def implementation():
 
     if token is None:
         raise Exception('Assuming role failed for unknown reasons')
+    
+    assert username, 'Username cannot be None at this point'
 
     os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
     with open(credentials_path, 'w') as configfile:
@@ -344,7 +430,7 @@ def implementation():
     else:
         print(f'Your AWS access key pair has been stored in the AWS configuration file {credentials_path}')
     
-    print('Note that it will expire in ' + str(datetime.timedelta(seconds=tokenDuration)) + ' hours')
+    print(f'Note that it will expire in {datetime.timedelta(seconds=tokenDuration)} hours')
     print('----------------------------------------------------------------\n')
 
     return username, token['Credentials']['AccessKeyId'], token['Credentials']['SecretAccessKey'], token['Credentials']['SessionToken']
