@@ -83,6 +83,16 @@ aws sts get-caller-identity
 
 **Note**: Staging/production access may require different credentials or admin provisioning.
 
+## Git Preferences
+
+- **Always push to `personal` remote** (visma-allan-nevala), never to `origin` (Visma-Netvisor)
+- **No AI attribution in commits**: Do not include "Co-Authored-By", "Generated with Claude Code", or any mention of Claude/AI in commit messages
+- Keep commit messages clean and concise
+
+```bash
+git push personal
+```
+
 ## Important Notes
 
 - Python version is enforced at runtime (3.9+)
